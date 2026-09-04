@@ -903,22 +903,11 @@
       ]
     }
   },
-  "active": true,
+  "active": false,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "meta": {
-    "templateCredsSetupCompleted": true
-  },
   "nodeGroups": [],
-  "tags": [],
-  "_github_notes": {
-    "setup": [
-      "Reconnect Google Sheets credentials after import.",
-      "Replace YOUR_GOOGLE_SHEET_ID or reselect the spreadsheet in n8n.",
-      "Replace YOUR_SLACK_CHANNEL_ID or reselect the Slack channel in n8n."
-    ],
-    "security": "Credential bindings, instance metadata, webhook IDs, and private cached sheet URLs were removed."
-  }
+  "tags": []
 }
