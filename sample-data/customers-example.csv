@@ -1,0 +1,9 @@
+client_id,company_name,contact_name,contact_email,account_manager,account_manager_email,last_login_date,nps,support_escalated,renewal_date
+C001,Acme Corp,Jordan Lee,jordan.lee@example.com,Alex Martin,alex.martin@example.com,2026-07-10,5,False,2026-10-10
+C002,BluePeak,Taylor Morgan,taylor.morgan@example.com,Sophie Robert,sophie.robert@example.com,2026-08-30,9,False,2027-01-15
+C003,Cedar Labs,Casey Brown,casey.brown@example.com,Alex Martin,alex.martin@example.com,2026-08-20,8,True,2026-12-15
+C004,Delta Studio,Morgan Davis,morgan.davis@example.com,Sophie Robert,sophie.robert@example.com,2026-08-28,8,False,2026-09-25
+C005,Ember Agency,Riley Wilson,riley.wilson@example.com,Alex Martin,alex.martin@example.com,2026-06-15,6,False,2027-03-01
+C006,Fjord Works,Avery Clark,avery.clark@example.com,Sophie Robert,sophie.robert@example.com,2026-08-12,7,False,2026-11-20
+C007,Helio Systems,Cameron Young,cameron.young@example.com,Alex Martin,alex.martin@example.com,2026-08-29,5,False,2026-12-01
+C008,Indigo Media,Parker Hall,parker.hall@example.com,Sophie Robert,sophie.robert@example.com,2026-07-20,9,False,2026-09-15

@@ -1,0 +1,19 @@
+# Environment variables
+.env
+.env.*
+
+# Credentials and secrets
+credentials/
+secrets/
+*.key
+*.pem
+
+# Local n8n data
+.n8n/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
