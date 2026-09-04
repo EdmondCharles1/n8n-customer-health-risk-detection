@@ -1,0 +1,924 @@
+{
+  "name": "Cusomer Health - Risk Detection",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "40376910-0940-476e-a88a-637f3f365924",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id",
+          "cachedResultName": "Tasklet - Customer Health Data"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Clients"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        0
+      ],
+      "id": "080fbf69-50d4-4235-98ec-874c18b063cc",
+      "name": "Get row(s) in sheet"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3b5bb4e9-3409-4ddc-9261-040dd9487c1e",
+              "name": "risk_inactivity",
+              "value": "={{ $json.days_since_login >= 30 }}",
+              "type": "boolean"
+            },
+            {
+              "id": "f730475d-f4e5-4f25-a7cc-833cf5c0bbe2",
+              "name": "risk_nps",
+              "value": "={{ $json.nps < 7 }}",
+              "type": "boolean"
+            },
+            {
+              "id": "92103b41-6a36-485b-b9af-38ffb85a17a0",
+              "name": "risk_support",
+              "value": "={{ $json.support_escalated === true }}",
+              "type": "boolean"
+            },
+            {
+              "id": "c6af8502-51f8-4c9d-8aad-0ab9a9542894",
+              "name": "risk_renewal",
+              "value": "={{ $json.days_until_renewal >= 0 && $json.days_until_renewal <= 60 }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        672,
+        0
+      ],
+      "id": "044b0ba5-9786-455d-ae8a-8cbb91fc2045",
+      "name": "Edit Fields - Evaluate Risks"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "588ac6f0-f07f-4e9b-8c55-f03556e5cf48",
+              "name": "days_since_login",
+              "value": "={{ Math.floor($today.diff(DateTime.fromISO($json.last_login_date), 'days').days) }}",
+              "type": "number"
+            },
+            {
+              "id": "af49dd0a-eb39-43c1-ada9-5354506b63c4",
+              "name": "days_until_renewal",
+              "value": "={{ Math.floor(DateTime.fromISO($json.renewal_date).diff($today, 'days').days) }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        448,
+        0
+      ],
+      "id": "a320d40a-adf3-4c71-ac53-31c0e5458064",
+      "name": "Edit Fields - Calculate Metrics"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b8ef0d92-30dd-4c41-9387-5d6800b9bff5",
+              "name": "is_at_risk",
+              "value": "={{ $json.risk_inactivity || $json.risk_nps || $json.risk_support || $json.risk_renewal }}",
+              "type": "boolean"
+            },
+            {
+              "id": "17160f5c-9706-43d9-a98b-bae0362318ae",
+              "name": "risk_reasons",
+              "value": "={{ \n  ($json.risk_inactivity || $json.risk_nps || $json.risk_support || $json.risk_renewal)\n  ? [\n      $json.risk_inactivity ? `Aucune connexion depuis ${$json.days_since_login} jours` : null,\n      $json.risk_nps ? `NPS de ${$json.nps} inférieur à 7` : null,\n      $json.risk_support ? 'Support escaladé' : null,\n      $json.risk_renewal ? `Renouvellement dans ${$json.days_until_renewal} jours` : null\n    ].filter(Boolean).join(' | ')\n  : 'Client sain'\n}}",
+              "type": "string"
+            },
+            {
+              "id": "5eebf1e3-9af7-4281-a86f-785af7f0d88f",
+              "name": "suggested_next_step",
+              "value": "={{   $json.risk_support     ? 'Contacter le client en priorité pour comprendre et traiter l’escalade support.'     : $json.risk_nps       ? 'Contacter le client pour comprendre les causes de son insatisfaction et convenir d’un plan d’action.'       : $json.risk_renewal         ? 'Planifier un échange avant le renouvellement pour vérifier la satisfaction et préparer la suite.'         : $json.risk_inactivity           ? 'Contacter le client pour comprendre la baisse d’utilisation et proposer un point d’accompagnement.'           : 'Aucune action requise pour le moment.'}}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        896,
+        0
+      ],
+      "id": "232ac545-e04e-47a3-9012-6093e567169c",
+      "name": "Edit Fields - Summarize Risk"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f904675a-a52c-417b-b8dc-d65aa93ef1ee",
+              "leftValue": "={{ $json.is_at_risk }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1088,
+        -80
+      ],
+      "id": "dd742c48-22ea-4e97-85c0-5380f1b23ca5",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b7b5e447-0a21-4231-bc54-257d467dea99",
+              "name": "task_title",
+              "value": "={{ `Prise de contact proactive - ${$json.company_name}` }}",
+              "type": "string"
+            },
+            {
+              "id": "cdc1cd35-6bac-4fe3-a569-e0ad9f6618c1",
+              "name": "task_list",
+              "value": "Personnes à risque cette semaine",
+              "type": "string"
+            },
+            {
+              "id": "2bdbbbb5-e98c-4b7b-832c-fa43dc63e035",
+              "name": "task_assignee",
+              "value": "={{ $json.account_manager_email }}",
+              "type": "string"
+            },
+            {
+              "id": "f8cdb3ef-9087-43f5-9527-4483c28a6073",
+              "name": "task_context",
+              "value": "={{ `Client : ${$json.company_name} Contact : ${$json.contact_name} (${ $json.contact_email }) Gestionnaire : ${$json.account_manager}  Risques détectés : ${$json.risk_reasons}  Indicateurs : - Dernière connexion : il y a ${$json.days_since_login} jours - NPS : ${$json.nps} - Support escaladé : ${$json.support_escalated ? 'Oui' : 'Non'} - Renouvellement : dans ${$json.days_until_renewal} jours  Prochaine étape suggérée : ${$json.suggested_next_step}` }}",
+              "type": "string"
+            },
+            {
+              "id": "553b8c91-083e-4da0-ad41-fb32334a6603",
+              "name": "task_created_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "4e40b389-c4c1-4465-ba89-87ca29066a5c",
+              "name": "task_due_at",
+              "value": "={{ $now.plus({ hours: 48 }).toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1408,
+        -96
+      ],
+      "id": "825bbafe-dafa-4b5d-bf80-7f13d9c4592b",
+      "name": "Edit Fields - Build Task Payload"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "46c5fcbe-f8bd-4fa7-87f1-5ba3cd846c2e",
+              "name": "task_id",
+              "value": "={{ `TASK-${$json.client_id}-${$now.startOf('week').toISODate()}` }}",
+              "type": "string"
+            },
+            {
+              "id": "29b64154-c230-4c35-8293-b5fa10692b56",
+              "name": "status",
+              "value": "Personnes à risque cette semaine",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1648,
+        -96
+      ],
+      "id": "a802bc29-0ede-4532-8c68-96cbfa961bf2",
+      "name": "Edit Fields - Add Task ID"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id",
+          "cachedResultName": "Tasklet - Customer Health Data"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 638144963,
+          "mode": "list",
+          "cachedResultName": "Tasks"
+        },
+        "filtersUI": {
+          "values": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1872,
+        32
+      ],
+      "id": "3b648d33-64b6-4caa-b320-5a8c5e85fec3",
+      "name": "Google Sheets - Find Existing Task",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "advanced": true,
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "task_id",
+              "field2": "task_id"
+            }
+          ]
+        },
+        "joinMode": "enrichInput1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2288,
+        -80
+      ],
+      "id": "6eda2ef4-c596-42b5-a7d5-e949c463bcf3",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8a8c8ce1-0a8d-4a38-acf7-d8d738f6a93c",
+              "leftValue": "={{ $json.existing_task_found }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2480,
+        -80
+      ],
+      "id": "a5f8b2bf-8bb2-4526-a7dd-cfb38b0a4ddc",
+      "name": "If - Task Exists?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "21eefe61-e98f-4a9d-835d-7803093ee0c7",
+              "name": "existing_task_found",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2096,
+        32
+      ],
+      "id": "60e24c92-ee23-4336-93ee-e2a79a471d48",
+      "name": "Edit Fields - Mark Existing Task"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id",
+          "cachedResultName": "Tasklet - Customer Health Data"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 638144963,
+          "mode": "list",
+          "cachedResultName": "Tasks"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "task_id": "={{ $json.task_id }}",
+            "client_id": "={{ $json.client_id }}",
+            "company_name": "={{ $json.company_name }}",
+            "risk_reasons": "={{ $json.risk_reasons }}",
+            "suggested_next_step": "={{ $json.suggested_next_step }}",
+            "task_title": "={{ $json.task_title }}",
+            "task_assignee": "={{ $json.task_assignee }}",
+            "task_created_at": "={{ $json.task_created_at }}",
+            "task_due_at": "={{ $json.task_due_at }}",
+            "status": "={{ $json.status }}",
+            "escalated": "={{ false }}"
+          },
+          "matchingColumns": [
+            "task_id"
+          ],
+          "schema": [
+            {
+              "id": "task_id",
+              "displayName": "task_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "client_id",
+              "displayName": "client_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "company_name",
+              "displayName": "company_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "risk_reasons",
+              "displayName": "risk_reasons",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "suggested_next_step",
+              "displayName": "suggested_next_step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "task_title",
+              "displayName": "task_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "task_assignee",
+              "displayName": "task_assignee",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "task_created_at",
+              "displayName": "task_created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "task_due_at",
+              "displayName": "task_due_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "escalated",
+              "displayName": "escalated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2624,
+        48
+      ],
+      "id": "f5b1861c-a8ba-4d89-bdf6-fc7b6dbd7d3e",
+      "name": "Append row in sheet"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "05e8cc2b-1e4f-4da9-a264-0fe9df43890e",
+              "name": "timestamp",
+              "value": "={{ $now }}",
+              "type": "string"
+            },
+            {
+              "id": "81c68526-d796-4353-a89a-53ffb7454ea3",
+              "name": "service",
+              "value": "Slack",
+              "type": "string"
+            },
+            {
+              "id": "5712083b-bbcc-4c22-b930-75d16281c5af",
+              "name": "status",
+              "value": "FAILED",
+              "type": "string"
+            },
+            {
+              "id": "2fb237a5-9759-493a-bc2a-1677dc12010e",
+              "name": "node",
+              "value": "Slack",
+              "type": "string"
+            },
+            {
+              "id": "81c4eec8-c7d6-45be-a5bd-9ec16784cf3f",
+              "name": "task_id",
+              "value": "={{ $('Append row in sheet').item.json.task_id }}",
+              "type": "string"
+            },
+            {
+              "id": "9e64cd3c-2ef8-443a-8c1c-c1d5825207fb",
+              "name": "client_id",
+              "value": "={{ $('Append row in sheet').item.json.client_id }}",
+              "type": "string"
+            },
+            {
+              "id": "dd22212a-11db-4ebe-b529-fd9b788354dc",
+              "name": "error_message",
+              "value": "{{ $json.error?.message || $json.message || $json.description || JSON.stringify($json) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        3072,
+        -80
+      ],
+      "id": "933a3e0d-bcf5-41d9-a7cd-c21fc48601d5",
+      "name": "Préparer le log d'erreur Slack"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id",
+          "cachedResultName": "Tasklet - Customer Health Data"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 831656430,
+          "mode": "list",
+          "cachedResultName": "Error Logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $json.timestamp }}",
+            "service": "={{ $json.service }}",
+            "status": "={{ $json.status }}",
+            "node": "={{ $json.node }}",
+            "task_id": "={{ $json.task_id }}",
+            "client_id": "={{ $json.client_id }}",
+            "error_message": "={{ $json.error_message }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "service",
+              "displayName": "service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "node",
+              "displayName": "node",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "client_id",
+              "displayName": "client_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "task_id",
+              "displayName": "task_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_message",
+              "displayName": "error_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3296,
+        -80
+      ],
+      "id": "3377c911-197a-4bc3-b710-3de62d2bab00",
+      "name": "Log Slack Error"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "id"
+        },
+        "text": "=🚨 New High-Priority Task  \nClient: {{ $json.client_id }} \nCompany: {{ $json.company_name }} \nTask ID: {{ $json.task_id }}  \nA new task has been created and added to the tracking sheet.",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        2816,
+        48
+      ],
+      "id": "7bc94be3-0d16-4020-a36f-1784727aef63",
+      "name": "Send Slack Alert",
+      "onError": "continueErrorOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields - Calculate Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields - Calculate Metrics": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields - Evaluate Risks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields - Evaluate Risks": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields - Summarize Risk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields - Summarize Risk": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields - Build Task Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields - Build Task Payload": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields - Add Task ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields - Add Task ID": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Find Existing Task",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets - Find Existing Task": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields - Mark Existing Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "If - Task Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If - Task Exists?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields - Mark Existing Task": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer le log d'erreur Slack": {
+      "main": [
+        [
+          {
+            "node": "Log Slack Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Slack Alert": {
+      "main": [
+        [
+          {
+            "node": "Préparer le log d'erreur Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "tags": [],
+  "_github_notes": {
+    "setup": [
+      "Reconnect Google Sheets credentials after import.",
+      "Replace YOUR_GOOGLE_SHEET_ID or reselect the spreadsheet in n8n.",
+      "Replace YOUR_SLACK_CHANNEL_ID or reselect the Slack channel in n8n."
+    ],
+    "security": "Credential bindings, instance metadata, webhook IDs, and private cached sheet URLs were removed."
+  }
+}
