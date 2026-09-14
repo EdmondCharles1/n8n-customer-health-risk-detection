@@ -1,6 +1,8 @@
 # Environment variables
 .env
 .env.*
+# The template file is safe to commit (no secrets)
+!.env.example
 
 # Credentials and secrets
 credentials/

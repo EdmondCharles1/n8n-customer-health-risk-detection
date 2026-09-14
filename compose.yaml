@@ -1,0 +1,23 @@
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      # Bound to 127.0.0.1 on purpose: the instance stays local only,
+      # it is never exposed on the LAN or on the Internet.
+      - "127.0.0.1:5678:5678"
+    environment:
+      TZ: ${TZ}
+      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE}
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      # Read from the local .env file (never committed).
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+    volumes:
+      # Persistent n8n state: SQLite database, workflows, encrypted credentials.
+      - n8n_data:/home/node/.n8n
+      # Repository workflow folder, mounted read-only for CLI import.
+      - ./workflow:/workflow:ro
+
+volumes:
+  n8n_data:
