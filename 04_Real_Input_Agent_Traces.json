@@ -1,0 +1,515 @@
+{
+  "workflow": "Customer Health - Risk Detection (Module 3 - Multi-Agent)",
+  "workflow_id": "5ZoogSUNDq82G5hf",
+  "execution_type": "REAL_N8N_EXECUTIONS",
+  "n8n_version": "2.38.7",
+  "collected_at": "2026-09-15",
+  "evidence_source": "n8n execution store (execution_entity / execution_data)",
+  "models_used": {
+    "C006 (execution 18)": "models/gemini-3.6-flash",
+    "C008 (execution 28)": "models/gemini-3.1-flash-lite",
+    "C005 (execution 29)": "models/gemini-3.1-flash-lite",
+    "note": "gemini-3.6-flash hit its free-tier daily cap (20 req/day/model) and then returned 503; gemini-3.7-flash and gemini-3.8-flash returned 503; gemini-2.5-flash is retired for new users (404). gemini-3.1-flash-lite served runs 2 and 3. Run 1 is preserved exactly as originally captured on gemini-3.6-flash. Agent prompts, structured output schemas, parsers and topology were identical for all runs."
+  },
+  "method": "One customer per execution, isolated with a temporary client_id filter on 'Get row(s) in sheet'. Customer source data was never modified. The temporary filter and the temporary CLI trigger were removed afterwards.",
+  "integrity": {
+    "ai_outputs_are_verbatim": true,
+    "simulated_or_predicted_outputs": 0,
+    "outputs_edited_after_execution": 0,
+    "complete_real_runs": 3,
+    "credentials_or_secrets_included": false
+  },
+  "runs": [
+    {
+      "client_id": "C006",
+      "company_name": "Futura",
+      "scenario": "Healthy / no-risk case",
+      "execution": {
+        "execution_id": 18,
+        "status": "success",
+        "started_at": "2026-09-15 05:46:18.425Z",
+        "stopped_at": "2026-09-15 05:47:16.803Z",
+        "mode": "cli"
+      },
+      "model_used": "models/gemini-3.6-flash",
+      "input": {
+        "client_id": "C006",
+        "company_name": "Futura",
+        "days_since_login": 26,
+        "nps": 9,
+        "support_escalated": false,
+        "days_until_renewal": 153,
+        "risk_inactivity": false,
+        "risk_nps": false,
+        "risk_support": false,
+        "risk_renewal": false
+      },
+      "classifier": {
+        "status": "OK",
+        "output": {
+          "risk_level": "LOW",
+          "risk_category": "NO_RISK",
+          "confidence": 1
+        }
+      },
+      "extractor": {
+        "status": "OK",
+        "output": {
+          "risk_signals": [],
+          "key_metrics": {
+            "usage_trend": "stable",
+            "support_trend": "stable",
+            "renewal_window": "far"
+          }
+        }
+      },
+      "merged_analysis": {
+        "status": "OK",
+        "output": {
+          "classification": {
+            "risk_level": "LOW",
+            "risk_category": "NO_RISK",
+            "confidence": 1
+          },
+          "customer_context": "client_id: C006\ncompany_name: Futura\ndays_since_login: 26\nnps: 9\nsupport_escalated: false\ndays_until_renewal: 153\nrisk_inactivity: false\nrisk_nps: false\nrisk_support: false\nrisk_renewal: false",
+          "client_id": "C006",
+          "company_name": "Futura",
+          "contact_name": "Noah Simon",
+          "contact_email": "noah.simon@example.com",
+          "account_manager": "Sophie Robert",
+          "account_manager_email": "sophie.robert@example.com",
+          "days_since_login": 26,
+          "nps": 9,
+          "support_escalated": false,
+          "days_until_renewal": 153,
+          "is_at_risk": false,
+          "risk_reasons": "Client sain",
+          "suggested_next_step": "Aucune action requise pour le moment.",
+          "signals": {
+            "risk_signals": [],
+            "key_metrics": {
+              "usage_trend": "stable",
+              "support_trend": "stable",
+              "renewal_window": "far"
+            }
+          }
+        }
+      },
+      "reasoner": {
+        "status": "OK",
+        "output": {
+          "requires_action": false,
+          "action": "NO_ACTION",
+          "priority": "LOW",
+          "reason": "No risk signals detected.",
+          "recommended_follow_up": "No action required."
+        }
+      },
+      "applied_decision": {
+        "status": "OK",
+        "output": {
+          "is_at_risk": false,
+          "risk_reasons": "Client sain",
+          "suggested_next_step": "No action required.",
+          "agent_risk_level": "LOW",
+          "agent_risk_category": "NO_RISK",
+          "agent_confidence": 1,
+          "agent_risk_signals": "",
+          "agent_action": "NO_ACTION",
+          "agent_priority": "LOW",
+          "agent_reason": "No risk signals detected.",
+          "client_id": "C006",
+          "company_name": "Futura",
+          "contact_name": "Noah Simon",
+          "contact_email": "noah.simon@example.com",
+          "account_manager": "Sophie Robert",
+          "account_manager_email": "sophie.robert@example.com",
+          "days_since_login": 26,
+          "nps": 9,
+          "support_escalated": false,
+          "days_until_renewal": 153
+        }
+      },
+      "composer": {
+        "status": "SKIPPED",
+        "reason": "No action required; normal workflow routing stopped before Slack composition."
+      },
+      "final_output": {
+        "requires_action": false,
+        "action": "NO_ACTION",
+        "priority": "LOW",
+        "task_id": null,
+        "task_created": "SKIPPED",
+        "slack_result": "SKIPPED",
+        "outcome": "Customer classified as not at risk; workflow stopped at 'If'.",
+        "routing_evidence": {
+          "If": {
+            "true_branch_items": 0,
+            "false_branch_items": 1
+          },
+          "If - Task Exists?": null
+        },
+        "nodes_executed": [
+          "Action Reasoner Agent",
+          "Classifier Gemini Model",
+          "Classifier Output Parser",
+          "Edit Fields - Apply Agent Decision",
+          "Edit Fields - Calculate Metrics",
+          "Edit Fields - Evaluate Risks",
+          "Edit Fields - Summarize Risk",
+          "Extractor Gemini Model",
+          "Extractor Output Parser",
+          "Format Classifier Output",
+          "Format Extractor Output",
+          "Get row(s) in sheet",
+          "If",
+          "Merge Agent Analysis",
+          "Prepare Agent Input",
+          "Reasoner Gemini Model",
+          "Reasoner Output Parser",
+          "Risk Classifier Agent",
+          "Risk Signal Extractor Agent",
+          "Schedule Trigger"
+        ]
+      }
+    },
+    {
+      "client_id": "C008",
+      "company_name": "Indigo Media",
+      "scenario": "Renewal-risk case",
+      "execution": {
+        "execution_id": 28,
+        "status": "success",
+        "started_at": "2026-09-15 13:53:00.259Z",
+        "stopped_at": "2026-09-15 13:53:24.971Z",
+        "mode": "cli"
+      },
+      "model_used": "models/gemini-3.1-flash-lite",
+      "input": {
+        "client_id": "C008",
+        "company_name": "Indigo Media",
+        "days_since_login": 26,
+        "nps": 7,
+        "support_escalated": false,
+        "days_until_renewal": 35,
+        "risk_inactivity": false,
+        "risk_nps": false,
+        "risk_support": false,
+        "risk_renewal": true
+      },
+      "classifier": {
+        "status": "OK",
+        "output": {
+          "risk_level": "MEDIUM",
+          "risk_category": "RENEWAL_RISK",
+          "confidence": 1
+        }
+      },
+      "extractor": {
+        "status": "OK",
+        "output": {
+          "risk_signals": [
+            "renewal is in 35 days"
+          ],
+          "key_metrics": {
+            "usage_trend": "stable",
+            "support_trend": "stable",
+            "renewal_window": "approaching"
+          }
+        }
+      },
+      "merged_analysis": {
+        "status": "OK",
+        "output": {
+          "classification": {
+            "risk_level": "MEDIUM",
+            "risk_category": "RENEWAL_RISK",
+            "confidence": 1
+          },
+          "customer_context": "client_id: C008\ncompany_name: Indigo Media\ndays_since_login: 26\nnps: 7\nsupport_escalated: false\ndays_until_renewal: 35\nrisk_inactivity: false\nrisk_nps: false\nrisk_support: false\nrisk_renewal: true",
+          "client_id": "C008",
+          "company_name": "Indigo Media",
+          "contact_name": "Nathan Garcia",
+          "contact_email": "nathan.garcia@example.com",
+          "account_manager": "Sophie Robert",
+          "account_manager_email": "sophie.robert@example.com",
+          "days_since_login": 26,
+          "nps": 7,
+          "support_escalated": false,
+          "days_until_renewal": 35,
+          "is_at_risk": true,
+          "risk_reasons": "Renouvellement dans 35 jours",
+          "suggested_next_step": "Planifier un échange avant le renouvellement pour vérifier la satisfaction et préparer la suite.",
+          "signals": {
+            "risk_signals": [
+              "renewal is in 35 days"
+            ],
+            "key_metrics": {
+              "usage_trend": "stable",
+              "support_trend": "stable",
+              "renewal_window": "approaching"
+            }
+          }
+        }
+      },
+      "reasoner": {
+        "status": "OK",
+        "output": {
+          "requires_action": true,
+          "action": "CREATE_CSM_TASK",
+          "priority": "MEDIUM",
+          "reason": "Renewal is in 35 days.",
+          "recommended_follow_up": "Schedule a check-in before the renewal date."
+        }
+      },
+      "applied_decision": {
+        "status": "OK",
+        "output": {
+          "is_at_risk": true,
+          "risk_reasons": "renewal is in 35 days",
+          "suggested_next_step": "Schedule a check-in before the renewal date.",
+          "agent_risk_level": "MEDIUM",
+          "agent_risk_category": "RENEWAL_RISK",
+          "agent_confidence": 1,
+          "agent_risk_signals": "renewal is in 35 days",
+          "agent_action": "CREATE_CSM_TASK",
+          "agent_priority": "MEDIUM",
+          "agent_reason": "Renewal is in 35 days.",
+          "client_id": "C008",
+          "company_name": "Indigo Media",
+          "contact_name": "Nathan Garcia",
+          "contact_email": "nathan.garcia@example.com",
+          "account_manager": "Sophie Robert",
+          "account_manager_email": "sophie.robert@example.com",
+          "days_since_login": 26,
+          "nps": 7,
+          "support_escalated": false,
+          "days_until_renewal": 35
+        }
+      },
+      "composer": {
+        "status": "SKIPPED",
+        "reason": "Duplicate task detected (TASK-C008-2026-09-14 already present in the Tasks sheet); normal workflow routing stopped at 'If - Task Exists?' before Slack composition."
+      },
+      "final_output": {
+        "requires_action": true,
+        "action": "CREATE_CSM_TASK",
+        "priority": "MEDIUM",
+        "task_id": "TASK-C008-2026-09-14",
+        "task_created": "SKIPPED_DUPLICATE",
+        "slack_result": "SKIPPED",
+        "outcome": "Customer at risk and task payload built, but an identical task already existed for this week, so duplicate detection stopped the branch before append and Slack.",
+        "routing_evidence": {
+          "If": {
+            "true_branch_items": 1,
+            "false_branch_items": 0
+          },
+          "If - Task Exists?": {
+            "true_duplicate_items": 1,
+            "false_new_task_items": 0
+          }
+        },
+        "nodes_executed": [
+          "Action Reasoner Agent",
+          "Classifier Gemini Model",
+          "Classifier Output Parser",
+          "Edit Fields - Add Task ID",
+          "Edit Fields - Apply Agent Decision",
+          "Edit Fields - Build Task Payload",
+          "Edit Fields - Calculate Metrics",
+          "Edit Fields - Evaluate Risks",
+          "Edit Fields - Mark Existing Task",
+          "Edit Fields - Summarize Risk",
+          "Extractor Gemini Model",
+          "Extractor Output Parser",
+          "Format Classifier Output",
+          "Format Extractor Output",
+          "Get row(s) in sheet",
+          "Google Sheets - Find Existing Task",
+          "If",
+          "If - Task Exists?",
+          "Merge",
+          "Merge Agent Analysis",
+          "Prepare Agent Input",
+          "Reasoner Gemini Model",
+          "Reasoner Output Parser",
+          "Risk Classifier Agent",
+          "Risk Signal Extractor Agent",
+          "Schedule Trigger"
+        ]
+      }
+    },
+    {
+      "client_id": "C005",
+      "company_name": "Ember Agency",
+      "scenario": "Multiple / high-risk case",
+      "execution": {
+        "execution_id": 29,
+        "status": "success",
+        "started_at": "2026-09-15 14:00:33.196Z",
+        "stopped_at": "2026-09-15 14:00:51.952Z",
+        "mode": "cli"
+      },
+      "model_used": "models/gemini-3.1-flash-lite",
+      "input": {
+        "client_id": "C005",
+        "company_name": "Ember Agency",
+        "days_since_login": 76,
+        "nps": 4,
+        "support_escalated": true,
+        "days_until_renewal": 0,
+        "risk_inactivity": true,
+        "risk_nps": true,
+        "risk_support": true,
+        "risk_renewal": true
+      },
+      "classifier": {
+        "status": "OK",
+        "output": {
+          "risk_level": "HIGH",
+          "risk_category": "SUPPORT_RISK",
+          "confidence": 1
+        }
+      },
+      "extractor": {
+        "status": "OK",
+        "output": {
+          "risk_signals": [
+            "no login for 76 days",
+            "NPS of 4 is low",
+            "support escalation is active",
+            "renewal is in 0 days"
+          ],
+          "key_metrics": {
+            "usage_trend": "declining",
+            "support_trend": "increasing",
+            "renewal_window": "approaching"
+          }
+        }
+      },
+      "merged_analysis": {
+        "status": "OK",
+        "output": {
+          "classification": {
+            "risk_level": "HIGH",
+            "risk_category": "SUPPORT_RISK",
+            "confidence": 1
+          },
+          "customer_context": "client_id: C005\ncompany_name: Ember Agency\ndays_since_login: 76\nnps: 4\nsupport_escalated: true\ndays_until_renewal: 0\nrisk_inactivity: true\nrisk_nps: true\nrisk_support: true\nrisk_renewal: true",
+          "client_id": "C005",
+          "company_name": "Ember Agency",
+          "contact_name": "Chloé Moreau",
+          "contact_email": "chloe.moreau@example.com",
+          "account_manager": "Alex Martin",
+          "account_manager_email": "alex.martin@example.com",
+          "days_since_login": 76,
+          "nps": 4,
+          "support_escalated": true,
+          "days_until_renewal": 0,
+          "is_at_risk": true,
+          "risk_reasons": "Aucune connexion depuis 76 jours | NPS de 4 inférieur à 7 | Support escaladé | Renouvellement dans 0 jours",
+          "suggested_next_step": "Contacter le client en priorité pour comprendre et traiter l’escalade support.",
+          "signals": {
+            "risk_signals": [
+              "no login for 76 days",
+              "NPS of 4 is low",
+              "support escalation is active",
+              "renewal is in 0 days"
+            ],
+            "key_metrics": {
+              "usage_trend": "declining",
+              "support_trend": "increasing",
+              "renewal_window": "approaching"
+            }
+          }
+        }
+      },
+      "reasoner": {
+        "status": "OK",
+        "output": {
+          "requires_action": true,
+          "action": "CREATE_CSM_TASK",
+          "priority": "HIGH",
+          "reason": "The customer has an active support escalation and a renewal date of 0 days.",
+          "recommended_follow_up": "Contact the customer within 24 hours about the escalation."
+        }
+      },
+      "applied_decision": {
+        "status": "OK",
+        "output": {
+          "is_at_risk": true,
+          "risk_reasons": "no login for 76 days | NPS of 4 is low | support escalation is active | renewal is in 0 days",
+          "suggested_next_step": "Contact the customer within 24 hours about the escalation.",
+          "agent_risk_level": "HIGH",
+          "agent_risk_category": "SUPPORT_RISK",
+          "agent_confidence": 1,
+          "agent_risk_signals": "no login for 76 days | NPS of 4 is low | support escalation is active | renewal is in 0 days",
+          "agent_action": "CREATE_CSM_TASK",
+          "agent_priority": "HIGH",
+          "agent_reason": "The customer has an active support escalation and a renewal date of 0 days.",
+          "client_id": "C005",
+          "company_name": "Ember Agency",
+          "contact_name": "Chloé Moreau",
+          "contact_email": "chloe.moreau@example.com",
+          "account_manager": "Alex Martin",
+          "account_manager_email": "alex.martin@example.com",
+          "days_since_login": 76,
+          "nps": 4,
+          "support_escalated": true,
+          "days_until_renewal": 0
+        }
+      },
+      "composer": {
+        "status": "SKIPPED",
+        "reason": "Duplicate task detected (TASK-C005-2026-09-14 already present in the Tasks sheet); normal workflow routing stopped at 'If - Task Exists?' before Slack composition."
+      },
+      "final_output": {
+        "requires_action": true,
+        "action": "CREATE_CSM_TASK",
+        "priority": "HIGH",
+        "task_id": "TASK-C005-2026-09-14",
+        "task_created": "SKIPPED_DUPLICATE",
+        "slack_result": "SKIPPED",
+        "outcome": "Customer at risk and task payload built, but an identical task already existed for this week, so duplicate detection stopped the branch before append and Slack.",
+        "routing_evidence": {
+          "If": {
+            "true_branch_items": 1,
+            "false_branch_items": 0
+          },
+          "If - Task Exists?": {
+            "true_duplicate_items": 1,
+            "false_new_task_items": 0
+          }
+        },
+        "nodes_executed": [
+          "Action Reasoner Agent",
+          "Classifier Gemini Model",
+          "Classifier Output Parser",
+          "Edit Fields - Add Task ID",
+          "Edit Fields - Apply Agent Decision",
+          "Edit Fields - Build Task Payload",
+          "Edit Fields - Calculate Metrics",
+          "Edit Fields - Evaluate Risks",
+          "Edit Fields - Mark Existing Task",
+          "Edit Fields - Summarize Risk",
+          "Extractor Gemini Model",
+          "Extractor Output Parser",
+          "Format Classifier Output",
+          "Format Extractor Output",
+          "Get row(s) in sheet",
+          "Google Sheets - Find Existing Task",
+          "If",
+          "If - Task Exists?",
+          "Merge",
+          "Merge Agent Analysis",
+          "Prepare Agent Input",
+          "Reasoner Gemini Model",
+          "Reasoner Output Parser",
+          "Risk Classifier Agent",
+          "Risk Signal Extractor Agent",
+          "Schedule Trigger"
+        ]
+      }
+    }
+  ]
+}
