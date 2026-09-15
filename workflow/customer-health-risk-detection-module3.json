@@ -1,0 +1,1667 @@
+{
+  "name": "Customer Health - Risk Detection (Module 3 - Multi-Agent)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "40376910-0940-476e-a88a-637f3f365924",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id",
+          "cachedResultName": "Tasklet - Customer Health Data"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Clients"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        0
+      ],
+      "id": "080fbf69-50d4-4235-98ec-874c18b063cc",
+      "name": "Get row(s) in sheet"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3b5bb4e9-3409-4ddc-9261-040dd9487c1e",
+              "name": "risk_inactivity",
+              "value": "={{ $json.days_since_login >= 30 }}",
+              "type": "boolean"
+            },
+            {
+              "id": "f730475d-f4e5-4f25-a7cc-833cf5c0bbe2",
+              "name": "risk_nps",
+              "value": "={{ $json.nps < 7 }}",
+              "type": "boolean"
+            },
+            {
+              "id": "92103b41-6a36-485b-b9af-38ffb85a17a0",
+              "name": "risk_support",
+              "value": "={{ $json.support_escalated === true }}",
+              "type": "boolean"
+            },
+            {
+              "id": "c6af8502-51f8-4c9d-8aad-0ab9a9542894",
+              "name": "risk_renewal",
+              "value": "={{ $json.days_until_renewal >= 0 && $json.days_until_renewal <= 60 }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        672,
+        0
+      ],
+      "id": "044b0ba5-9786-455d-ae8a-8cbb91fc2045",
+      "name": "Edit Fields - Evaluate Risks"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "588ac6f0-f07f-4e9b-8c55-f03556e5cf48",
+              "name": "days_since_login",
+              "value": "={{ Math.floor($today.diff(DateTime.fromISO($json.last_login_date), 'days').days) }}",
+              "type": "number"
+            },
+            {
+              "id": "af49dd0a-eb39-43c1-ada9-5354506b63c4",
+              "name": "days_until_renewal",
+              "value": "={{ Math.floor(DateTime.fromISO($json.renewal_date).diff($today, 'days').days) }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        448,
+        0
+      ],
+      "id": "a320d40a-adf3-4c71-ac53-31c0e5458064",
+      "name": "Edit Fields - Calculate Metrics"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b8ef0d92-30dd-4c41-9387-5d6800b9bff5",
+              "name": "is_at_risk",
+              "value": "={{ $json.risk_inactivity || $json.risk_nps || $json.risk_support || $json.risk_renewal }}",
+              "type": "boolean"
+            },
+            {
+              "id": "17160f5c-9706-43d9-a98b-bae0362318ae",
+              "name": "risk_reasons",
+              "value": "={{ \n  ($json.risk_inactivity || $json.risk_nps || $json.risk_support || $json.risk_renewal)\n  ? [\n      $json.risk_inactivity ? `Aucune connexion depuis ${$json.days_since_login} jours` : null,\n      $json.risk_nps ? `NPS de ${$json.nps} inférieur à 7` : null,\n      $json.risk_support ? 'Support escaladé' : null,\n      $json.risk_renewal ? `Renouvellement dans ${$json.days_until_renewal} jours` : null\n    ].filter(Boolean).join(' | ')\n  : 'Client sain'\n}}",
+              "type": "string"
+            },
+            {
+              "id": "5eebf1e3-9af7-4281-a86f-785af7f0d88f",
+              "name": "suggested_next_step",
+              "value": "={{   $json.risk_support     ? 'Contacter le client en priorité pour comprendre et traiter l’escalade support.'     : $json.risk_nps       ? 'Contacter le client pour comprendre les causes de son insatisfaction et convenir d’un plan d’action.'       : $json.risk_renewal         ? 'Planifier un échange avant le renouvellement pour vérifier la satisfaction et préparer la suite.'         : $json.risk_inactivity           ? 'Contacter le client pour comprendre la baisse d’utilisation et proposer un point d’accompagnement.'           : 'Aucune action requise pour le moment.'}}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        896,
+        0
+      ],
+      "id": "232ac545-e04e-47a3-9012-6093e567169c",
+      "name": "Edit Fields - Summarize Risk"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f904675a-a52c-417b-b8dc-d65aa93ef1ee",
+              "leftValue": "={{ $json.is_at_risk }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2540,
+        -80
+      ],
+      "id": "dd742c48-22ea-4e97-85c0-5380f1b23ca5",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b7b5e447-0a21-4231-bc54-257d467dea99",
+              "name": "task_title",
+              "value": "={{ `Prise de contact proactive - ${$json.company_name}` }}",
+              "type": "string"
+            },
+            {
+              "id": "cdc1cd35-6bac-4fe3-a569-e0ad9f6618c1",
+              "name": "task_list",
+              "value": "Personnes à risque cette semaine",
+              "type": "string"
+            },
+            {
+              "id": "2bdbbbb5-e98c-4b7b-832c-fa43dc63e035",
+              "name": "task_assignee",
+              "value": "={{ $json.account_manager_email }}",
+              "type": "string"
+            },
+            {
+              "id": "f8cdb3ef-9087-43f5-9527-4483c28a6073",
+              "name": "task_context",
+              "value": "={{ `Client : ${$json.company_name} Contact : ${$json.contact_name} (${ $json.contact_email }) Gestionnaire : ${$json.account_manager}  Risques détectés : ${$json.risk_reasons}  Indicateurs : - Dernière connexion : il y a ${$json.days_since_login} jours - NPS : ${$json.nps} - Support escaladé : ${$json.support_escalated ? 'Oui' : 'Non'} - Renouvellement : dans ${$json.days_until_renewal} jours  Prochaine étape suggérée : ${$json.suggested_next_step}` }}",
+              "type": "string"
+            },
+            {
+              "id": "553b8c91-083e-4da0-ad41-fb32334a6603",
+              "name": "task_created_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "4e40b389-c4c1-4465-ba89-87ca29066a5c",
+              "name": "task_due_at",
+              "value": "={{ $now.plus({ hours: 48 }).toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2860,
+        -96
+      ],
+      "id": "825bbafe-dafa-4b5d-bf80-7f13d9c4592b",
+      "name": "Edit Fields - Build Task Payload"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "46c5fcbe-f8bd-4fa7-87f1-5ba3cd846c2e",
+              "name": "task_id",
+              "value": "={{ `TASK-${$json.client_id}-${$now.startOf('week').toISODate()}` }}",
+              "type": "string"
+            },
+            {
+              "id": "29b64154-c230-4c35-8293-b5fa10692b56",
+              "name": "status",
+              "value": "Personnes à risque cette semaine",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        3100,
+        -96
+      ],
+      "id": "a802bc29-0ede-4532-8c68-96cbfa961bf2",
+      "name": "Edit Fields - Add Task ID"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id",
+          "cachedResultName": "Tasklet - Customer Health Data"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 638144963,
+          "mode": "list",
+          "cachedResultName": "Tasks"
+        },
+        "filtersUI": {
+          "values": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3324,
+        32
+      ],
+      "id": "3b648d33-64b6-4caa-b320-5a8c5e85fec3",
+      "name": "Google Sheets - Find Existing Task",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "advanced": true,
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "task_id",
+              "field2": "task_id"
+            }
+          ]
+        },
+        "joinMode": "enrichInput1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3740,
+        -80
+      ],
+      "id": "6eda2ef4-c596-42b5-a7d5-e949c463bcf3",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8a8c8ce1-0a8d-4a38-acf7-d8d738f6a93c",
+              "leftValue": "={{ $json.existing_task_found }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3932,
+        -80
+      ],
+      "id": "a5f8b2bf-8bb2-4526-a7dd-cfb38b0a4ddc",
+      "name": "If - Task Exists?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "21eefe61-e98f-4a9d-835d-7803093ee0c7",
+              "name": "existing_task_found",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        3548,
+        32
+      ],
+      "id": "60e24c92-ee23-4336-93ee-e2a79a471d48",
+      "name": "Edit Fields - Mark Existing Task"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id",
+          "cachedResultName": "Tasklet - Customer Health Data"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 638144963,
+          "mode": "list",
+          "cachedResultName": "Tasks"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "task_id": "={{ $json.task_id }}",
+            "client_id": "={{ $json.client_id }}",
+            "company_name": "={{ $json.company_name }}",
+            "risk_reasons": "={{ $json.risk_reasons }}",
+            "suggested_next_step": "={{ $json.suggested_next_step }}",
+            "task_title": "={{ $json.task_title }}",
+            "task_assignee": "={{ $json.task_assignee }}",
+            "task_created_at": "={{ $json.task_created_at }}",
+            "task_due_at": "={{ $json.task_due_at }}",
+            "status": "={{ $json.status }}",
+            "escalated": "={{ false }}"
+          },
+          "matchingColumns": [
+            "task_id"
+          ],
+          "schema": [
+            {
+              "id": "task_id",
+              "displayName": "task_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "client_id",
+              "displayName": "client_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "company_name",
+              "displayName": "company_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "risk_reasons",
+              "displayName": "risk_reasons",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "suggested_next_step",
+              "displayName": "suggested_next_step",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "task_title",
+              "displayName": "task_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "task_assignee",
+              "displayName": "task_assignee",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "task_created_at",
+              "displayName": "task_created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "task_due_at",
+              "displayName": "task_due_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "escalated",
+              "displayName": "escalated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        4076,
+        48
+      ],
+      "id": "f5b1861c-a8ba-4d89-bdf6-fc7b6dbd7d3e",
+      "name": "Append row in sheet"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "05e8cc2b-1e4f-4da9-a264-0fe9df43890e",
+              "name": "timestamp",
+              "value": "={{ $now }}",
+              "type": "string"
+            },
+            {
+              "id": "81c68526-d796-4353-a89a-53ffb7454ea3",
+              "name": "service",
+              "value": "Slack",
+              "type": "string"
+            },
+            {
+              "id": "5712083b-bbcc-4c22-b930-75d16281c5af",
+              "name": "status",
+              "value": "FAILED",
+              "type": "string"
+            },
+            {
+              "id": "2fb237a5-9759-493a-bc2a-1677dc12010e",
+              "name": "node",
+              "value": "Slack",
+              "type": "string"
+            },
+            {
+              "id": "81c4eec8-c7d6-45be-a5bd-9ec16784cf3f",
+              "name": "task_id",
+              "value": "={{ $('Append row in sheet').item.json.task_id }}",
+              "type": "string"
+            },
+            {
+              "id": "9e64cd3c-2ef8-443a-8c1c-c1d5825207fb",
+              "name": "client_id",
+              "value": "={{ $('Append row in sheet').item.json.client_id }}",
+              "type": "string"
+            },
+            {
+              "id": "dd22212a-11db-4ebe-b529-fd9b788354dc",
+              "name": "error_message",
+              "value": "={{ $json.error?.message || $json.message || $json.description || JSON.stringify($json) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        4780,
+        -80
+      ],
+      "id": "933a3e0d-bcf5-41d9-a7cd-c21fc48601d5",
+      "name": "Préparer le log d'erreur Slack"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id",
+          "cachedResultName": "Tasklet - Customer Health Data"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 831656430,
+          "mode": "list",
+          "cachedResultName": "Error Logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $json.timestamp }}",
+            "service": "={{ $json.service }}",
+            "status": "={{ $json.status }}",
+            "node": "={{ $json.node }}",
+            "task_id": "={{ $json.task_id }}",
+            "client_id": "={{ $json.client_id }}",
+            "error_message": "={{ $json.error_message }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "service",
+              "displayName": "service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "node",
+              "displayName": "node",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "client_id",
+              "displayName": "client_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "task_id",
+              "displayName": "task_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_message",
+              "displayName": "error_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        5004,
+        -80
+      ],
+      "id": "3377c911-197a-4bc3-b710-3de62d2bab00",
+      "name": "Log Slack Error"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "id"
+        },
+        "text": "={{ $json.output?.slack_message || ('🚨 New High-Priority Task\\nClient: ' + $('Edit Fields - Add Task ID').item.json.client_id + '\\nCompany: ' + $('Edit Fields - Add Task ID').item.json.company_name + '\\nTask ID: ' + $('Edit Fields - Add Task ID').item.json.task_id + '\\nA new task has been created and added to the tracking sheet.') }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        4540,
+        48
+      ],
+      "id": "7bc94be3-0d16-4020-a36f-1784727aef63",
+      "name": "Send Slack Alert",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ae9240d9-0d1c-47b4-acb2-4bf9c2d3fd68",
+              "name": "customer_context",
+              "value": "={{ `client_id: ${$json.client_id}\ncompany_name: ${$json.company_name}\ndays_since_login: ${$json.days_since_login}\nnps: ${$json.nps}\nsupport_escalated: ${$json.support_escalated}\ndays_until_renewal: ${$json.days_until_renewal}\nrisk_inactivity: ${$json.risk_inactivity}\nrisk_nps: ${$json.risk_nps}\nrisk_support: ${$json.risk_support}\nrisk_renewal: ${$json.risk_renewal}` }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "ac747588-8278-4995-81e8-2a2331bceeb4",
+      "name": "Prepare Agent Input"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Classify this customer:\n\n{{ $json.customer_context }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are the Risk Classifier in a customer-health pipeline.\n\nYOUR ONLY JOB: assign one overall risk classification to one customer.\n\nYOU MAY DECIDE: risk_level, risk_category, confidence.\n\nYOU MUST NOT: list individual risk signals, choose an operational action, write any\nSlack or email text, or reference Google Sheets.\n\nINPUT: deterministic facts already computed by the workflow - days_since_login, nps,\nsupport_escalated, days_until_renewal and the four boolean flags risk_inactivity,\nrisk_nps, risk_support, risk_renewal.\n\nRULES:\n- Use only the values provided. Never invent or assume a metric that is not present.\n- risk_level:\n  HIGH   = risk_support is true, OR two or more flags are true.\n  MEDIUM = exactly one flag is true.\n  LOW    = no flag is true.\n- risk_category, exactly one of:\n  SUPPORT_RISK      (driven by risk_support)\n  SATISFACTION_RISK (driven by risk_nps)\n  RENEWAL_RISK      (driven by risk_renewal)\n  ENGAGEMENT_RISK   (driven by risk_inactivity)\n  NO_RISK           (no flag is true)\n  If several apply, pick the first match in the order listed above.\n- confidence: a number between 0 and 1.\n\nReturn only the structured object. No prose, no explanation."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1360,
+        -200
+      ],
+      "id": "01202c26-b0a8-41f2-b1be-5388532cd385",
+      "name": "Risk Classifier Agent",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1300,
+        -20
+      ],
+      "id": "32cabbf7-23e3-4d95-b807-9b73b3ad100e",
+      "name": "Classifier Model"
+    },
+    {
+      "parameters": {
+        "schemaType": "fromJson",
+        "jsonSchemaExample": "{\n  \"risk_level\": \"HIGH\",\n  \"risk_category\": \"ENGAGEMENT_RISK\",\n  \"confidence\": 0.92\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1460,
+        -20
+      ],
+      "id": "47860ec6-dd1a-410a-b62b-888075ae918e",
+      "name": "Classifier Output Parser"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Extract the risk signals for this customer:\n\n{{ $json.customer_context }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are the Risk Signal Extractor in a customer-health pipeline.\n\nYOUR ONLY JOB: list the concrete facts in this customer's data that indicate\ncustomer-health risk.\n\nYOU MAY DECIDE: which of the provided values count as risk signals, and how to\ndescribe each trend.\n\nYOU MUST NOT: assign an overall risk level, choose an action, write any Slack text,\nor reference Google Sheets.\n\nINPUT: the same deterministic facts given to the classifier.\n\nRULES:\n- Report only signals supported by the values provided. If a value is absent, do not\n  mention it. Never invent metrics such as revenue, tickets or seat counts.\n- Each entry of risk_signals is one short factual phrase that includes the number it\n  is based on, for example \"no login for 62 days\" or \"NPS of 5 is below 7\".\n- If nothing indicates risk, return an empty risk_signals array.\n- key_metrics.usage_trend:     \"declining\"   if days_since_login >= 30, else \"stable\".\n- key_metrics.support_trend:   \"increasing\"  if support_escalated is true, else \"stable\".\n- key_metrics.renewal_window:  \"approaching\" if days_until_renewal is between 0 and 60,\n                               else \"far\".\n\nReturn only the structured object. No prose, no explanation."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1360,
+        240
+      ],
+      "id": "1aa70ca3-fa29-4263-9af8-0b0f15f45eef",
+      "name": "Risk Signal Extractor Agent",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1300,
+        420
+      ],
+      "id": "61a7cecb-b995-47c1-a07e-becc0d557d8d",
+      "name": "Extractor Model"
+    },
+    {
+      "parameters": {
+        "schemaType": "fromJson",
+        "jsonSchemaExample": "{\n  \"risk_signals\": [\"no login for 62 days\", \"NPS of 5 is below 7\"],\n  \"key_metrics\": {\n    \"usage_trend\": \"declining\",\n    \"support_trend\": \"stable\",\n    \"renewal_window\": \"approaching\"\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1460,
+        420
+      ],
+      "id": "7be17ad2-d9ab-4264-9c4f-e94ef416db6d",
+      "name": "Extractor Output Parser"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "744bb372-4569-4e95-a463-a82fff4f81d5",
+              "name": "classification",
+              "value": "={{ $json.output || { risk_level: 'UNKNOWN', risk_category: 'UNKNOWN', confidence: 0 } }}",
+              "type": "object"
+            },
+            {
+              "id": "96181fbc-a6a9-43dc-b698-5a6007a29380",
+              "name": "customer_context",
+              "value": "={{ $('Prepare Agent Input').item.json.customer_context }}",
+              "type": "string"
+            },
+            {
+              "id": "1fa11950-091d-45d6-8fb6-78dbae0f7474",
+              "name": "client_id",
+              "value": "={{ $('Prepare Agent Input').item.json.client_id }}",
+              "type": "string"
+            },
+            {
+              "id": "e1fc3cc3-b10d-465c-bfd2-e21939b47ce0",
+              "name": "company_name",
+              "value": "={{ $('Prepare Agent Input').item.json.company_name }}",
+              "type": "string"
+            },
+            {
+              "id": "f55518c5-e641-45be-b62e-a94a6dcf32fa",
+              "name": "contact_name",
+              "value": "={{ $('Prepare Agent Input').item.json.contact_name }}",
+              "type": "string"
+            },
+            {
+              "id": "7dd81230-b339-4806-a4e7-50b7b00b4719",
+              "name": "contact_email",
+              "value": "={{ $('Prepare Agent Input').item.json.contact_email }}",
+              "type": "string"
+            },
+            {
+              "id": "d5a5a198-a5b0-4c9e-a194-3158eff50da9",
+              "name": "account_manager",
+              "value": "={{ $('Prepare Agent Input').item.json.account_manager }}",
+              "type": "string"
+            },
+            {
+              "id": "489f7385-6667-4891-8d8d-175f346baae2",
+              "name": "account_manager_email",
+              "value": "={{ $('Prepare Agent Input').item.json.account_manager_email }}",
+              "type": "string"
+            },
+            {
+              "id": "98c1b221-d33e-49f8-9037-3053b4cf28ce",
+              "name": "days_since_login",
+              "value": "={{ $('Prepare Agent Input').item.json.days_since_login }}",
+              "type": "number"
+            },
+            {
+              "id": "914b7af0-a566-4414-85e1-a5a5cc2f6e30",
+              "name": "nps",
+              "value": "={{ $('Prepare Agent Input').item.json.nps }}",
+              "type": "number"
+            },
+            {
+              "id": "7458599a-664a-4541-bddd-c7e6e1123643",
+              "name": "support_escalated",
+              "value": "={{ $('Prepare Agent Input').item.json.support_escalated }}",
+              "type": "boolean"
+            },
+            {
+              "id": "a3381161-521b-49ce-ad3c-e3e8165e7c18",
+              "name": "days_until_renewal",
+              "value": "={{ $('Prepare Agent Input').item.json.days_until_renewal }}",
+              "type": "number"
+            },
+            {
+              "id": "2c0fd8ad-a6e6-477b-843a-6e3ac35ef50b",
+              "name": "is_at_risk",
+              "value": "={{ $('Prepare Agent Input').item.json.is_at_risk }}",
+              "type": "boolean"
+            },
+            {
+              "id": "c503034b-8a6f-49c4-82c6-9180d12f2009",
+              "name": "risk_reasons",
+              "value": "={{ $('Prepare Agent Input').item.json.risk_reasons }}",
+              "type": "string"
+            },
+            {
+              "id": "d554dc2a-1104-4df2-998f-339287bab8f1",
+              "name": "suggested_next_step",
+              "value": "={{ $('Prepare Agent Input').item.json.suggested_next_step }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1660,
+        -200
+      ],
+      "id": "d781b233-693c-4b46-8583-f93720a73fcb",
+      "name": "Format Classifier Output"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "041e1f82-e991-4b32-af65-ec83cadbf79c",
+              "name": "signals",
+              "value": "={{ $json.output || { risk_signals: [], key_metrics: {} } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1660,
+        240
+      ],
+      "id": "0a64124f-1c7e-4f40-b65e-bffead7b4034",
+      "name": "Format Extractor Output"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1880,
+        0
+      ],
+      "id": "bc42c8db-5a8c-4ad8-bcf7-90c88e71f86b",
+      "name": "Merge Agent Analysis"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Classification:\n{{ JSON.stringify($json.classification) }}\n\nExtracted signals:\n{{ JSON.stringify($json.signals) }}\n\nCustomer context:\n{{ $json.customer_context }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are the Action Reasoner in a customer-health pipeline.\n\nYOUR ONLY JOB: decide what should happen for this customer, using the classification\nand the extracted signals you are given.\n\nYOU MAY DECIDE: requires_action, action, priority, reason, recommended_follow_up.\n\nYOU MUST NOT: re-score the risk (trust the classification you receive), invent new\nsignals, or write the Slack message - another agent does that.\n\nRULES:\n- requires_action: true when risk_level is HIGH or MEDIUM, false when it is LOW.\n- action: \"CREATE_CSM_TASK\" when requires_action is true, otherwise \"NO_ACTION\".\n- priority: HIGH when risk_level is HIGH, MEDIUM when MEDIUM, LOW when LOW.\n- reason: exactly one sentence, built only from the signals provided.\n- recommended_follow_up: one concrete next step for the account manager.\n  SUPPORT_RISK      -> contact the customer within 24 hours about the escalation.\n  SATISFACTION_RISK -> contact the customer to understand the low NPS and agree a plan.\n  RENEWAL_RISK      -> schedule a check-in before the renewal date.\n  ENGAGEMENT_RISK   -> contact the customer about the drop in usage.\n  NO_RISK           -> \"No action required.\"\n\nReturn only the structured object. No prose, no explanation."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        2100,
+        0
+      ],
+      "id": "7c4ecf89-495e-414a-8333-2793ab61f899",
+      "name": "Action Reasoner Agent",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        2040,
+        180
+      ],
+      "id": "23489098-489d-468f-b50d-628277971d04",
+      "name": "Reasoner Model"
+    },
+    {
+      "parameters": {
+        "schemaType": "fromJson",
+        "jsonSchemaExample": "{\n  \"requires_action\": true,\n  \"action\": \"CREATE_CSM_TASK\",\n  \"priority\": \"HIGH\",\n  \"reason\": \"Product usage is declining close to renewal.\",\n  \"recommended_follow_up\": \"The account manager should contact the customer within 24 hours.\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        2200,
+        180
+      ],
+      "id": "1330ceb8-03ec-45fc-88a1-fd5cdb124bff",
+      "name": "Reasoner Output Parser"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6e05382b-749c-4f3c-b7c5-d6d7e001ce7a",
+              "name": "is_at_risk",
+              "value": "={{ $json.output?.requires_action ?? $('Merge Agent Analysis').item.json.is_at_risk }}",
+              "type": "boolean"
+            },
+            {
+              "id": "15ee1545-2ac3-4d77-9ab6-55fcae38f265",
+              "name": "risk_reasons",
+              "value": "={{ ($('Merge Agent Analysis').item.json.signals?.risk_signals || []).join(' | ') || $('Merge Agent Analysis').item.json.risk_reasons }}",
+              "type": "string"
+            },
+            {
+              "id": "28e94d01-d2ab-4848-931d-202f8bcbf5cc",
+              "name": "suggested_next_step",
+              "value": "={{ $json.output?.recommended_follow_up || $('Merge Agent Analysis').item.json.suggested_next_step }}",
+              "type": "string"
+            },
+            {
+              "id": "c293ff58-5596-42d7-a89b-0054ea49a5f5",
+              "name": "agent_risk_level",
+              "value": "={{ $('Merge Agent Analysis').item.json.classification?.risk_level || 'UNKNOWN' }}",
+              "type": "string"
+            },
+            {
+              "id": "b586fad4-71d3-4be2-956e-a0d9147552cd",
+              "name": "agent_risk_category",
+              "value": "={{ $('Merge Agent Analysis').item.json.classification?.risk_category || 'UNKNOWN' }}",
+              "type": "string"
+            },
+            {
+              "id": "216b6ecb-bfd8-45aa-8ad1-c8283b19c997",
+              "name": "agent_confidence",
+              "value": "={{ $('Merge Agent Analysis').item.json.classification?.confidence ?? 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "ea03745f-7729-41ea-bd9d-b9395a7b496d",
+              "name": "agent_risk_signals",
+              "value": "={{ ($('Merge Agent Analysis').item.json.signals?.risk_signals || []).join(' | ') }}",
+              "type": "string"
+            },
+            {
+              "id": "22296b3b-fdd2-4102-b573-e552ef214591",
+              "name": "agent_action",
+              "value": "={{ $json.output?.action || 'NO_ACTION' }}",
+              "type": "string"
+            },
+            {
+              "id": "ce8c653d-bea8-4a6c-a71d-a1a8df833513",
+              "name": "agent_priority",
+              "value": "={{ $json.output?.priority || 'LOW' }}",
+              "type": "string"
+            },
+            {
+              "id": "5b984e3e-5d00-4b17-8839-a37e97f2c351",
+              "name": "agent_reason",
+              "value": "={{ $json.output?.reason || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "06ef909f-fb8a-4862-bc31-a3bf47c826aa",
+              "name": "client_id",
+              "value": "={{ $('Merge Agent Analysis').item.json.client_id }}",
+              "type": "string"
+            },
+            {
+              "id": "bbbd84ed-0d07-4959-8904-9e73a235ae72",
+              "name": "company_name",
+              "value": "={{ $('Merge Agent Analysis').item.json.company_name }}",
+              "type": "string"
+            },
+            {
+              "id": "03208d64-e9de-4e1d-b48c-922d6b20e918",
+              "name": "contact_name",
+              "value": "={{ $('Merge Agent Analysis').item.json.contact_name }}",
+              "type": "string"
+            },
+            {
+              "id": "34814284-e238-4012-a409-42424caa852f",
+              "name": "contact_email",
+              "value": "={{ $('Merge Agent Analysis').item.json.contact_email }}",
+              "type": "string"
+            },
+            {
+              "id": "c1e192c9-bae2-4796-8d39-5d029d4ab826",
+              "name": "account_manager",
+              "value": "={{ $('Merge Agent Analysis').item.json.account_manager }}",
+              "type": "string"
+            },
+            {
+              "id": "18a0fcfb-5b4a-44a3-8303-eee2d280f806",
+              "name": "account_manager_email",
+              "value": "={{ $('Merge Agent Analysis').item.json.account_manager_email }}",
+              "type": "string"
+            },
+            {
+              "id": "507c2589-f5b5-4d14-ba63-3b7dc54d4a48",
+              "name": "days_since_login",
+              "value": "={{ $('Merge Agent Analysis').item.json.days_since_login }}",
+              "type": "number"
+            },
+            {
+              "id": "3a57ecec-b5ad-4e28-a440-87c419bb3460",
+              "name": "nps",
+              "value": "={{ $('Merge Agent Analysis').item.json.nps }}",
+              "type": "number"
+            },
+            {
+              "id": "0dfcaec7-b5c6-440e-9519-1ffe209f3bb4",
+              "name": "support_escalated",
+              "value": "={{ $('Merge Agent Analysis').item.json.support_escalated }}",
+              "type": "boolean"
+            },
+            {
+              "id": "06b569fe-ca61-48a2-a493-9eca316c266d",
+              "name": "days_until_renewal",
+              "value": "={{ $('Merge Agent Analysis').item.json.days_until_renewal }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2320,
+        0
+      ],
+      "id": "b287e655-d4e6-4687-8650-12451e111fab",
+      "name": "Edit Fields - Apply Agent Decision"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Task ID: {{ $('Edit Fields - Add Task ID').item.json.task_id }}\nclient_id: {{ $('Edit Fields - Add Task ID').item.json.client_id }}\ncompany_name: {{ $('Edit Fields - Add Task ID').item.json.company_name }}\nrisk_level: {{ $('Edit Fields - Add Task ID').item.json.agent_risk_level }}\nrisk_signals: {{ $('Edit Fields - Add Task ID').item.json.agent_risk_signals }}\nreason: {{ $('Edit Fields - Add Task ID').item.json.agent_reason }}\nrecommended_follow_up: {{ $('Edit Fields - Add Task ID').item.json.suggested_next_step }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are the Slack Composer in a customer-health pipeline.\n\nYOUR ONLY JOB: turn a decision that has already been made into one short Slack alert.\n\nYOU MUST NOT: change or second-guess the decision, re-evaluate the risk, add signals\nthat were not given to you, or invent customer data.\n\nOUTPUT: a single plain-text message in the field slack_message, using exactly this\nstructure and nothing else:\n\n:rotating_light: Customer Risk Alert\n\nCustomer: <client_id> - <company_name>\nRisk Level: <risk_level>\nTask ID: <task_id>\n\nRisk signals:\n- <one line per signal>\n\nReason:\n<reason>\n\nRecommended action:\n<recommended_follow_up>\n\nRULES:\n- Use only the values supplied in the user message.\n- Risk signals arrive as one string separated by \" | \" - split it into one line each.\n- If there are no signals, write \"- None recorded\".\n- No markdown headings, no bold, no extra commentary.\n\nReturn only the structured object. No prose, no explanation."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        4300,
+        48
+      ],
+      "id": "e3e91b74-6173-4e96-96e5-4e51869f45a5",
+      "name": "Slack Composer Agent",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        4240,
+        228
+      ],
+      "id": "e6402570-23ad-446a-9c7e-b45ef77a55a2",
+      "name": "Composer Model"
+    },
+    {
+      "parameters": {
+        "schemaType": "fromJson",
+        "jsonSchemaExample": "{\n  \"slack_message\": \"\\ud83d\\udea8 Customer Risk Alert\\n\\nCustomer: C007 - Acme Corp\\nRisk Level: HIGH\\nTask ID: TASK-C007-2026-09-14\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        4400,
+        228
+      ],
+      "id": "2570c8f2-c7b2-4c20-bf65-5a96083edbf5",
+      "name": "Composer Output Parser"
+    },
+    {
+      "parameters": {
+        "content": "## 1. Parallel Analysis\nClassifier and Extractor both read **Prepare Agent Input** and run independently.\nClassifier = *how bad is it?*  Extractor = *which facts say so?*\nEach has its own model sub-node, so a cheaper model can be swapped in per agent.",
+        "height": 900,
+        "width": 620,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1240,
+        -400
+      ],
+      "id": "37f9a821-df3a-4bcd-88d1-8b97d0e06fab",
+      "name": "Sticky Note - 1. Parallel Analysis"
+    },
+    {
+      "parameters": {
+        "content": "## 2. Combined Reasoning\n**Merge Agent Analysis** pairs the two branches by position (1 item in = 1 item out for each agent, same order).\n**Action Reasoner Agent** is the only node that decides *what happens next*.\n**Apply Agent Decision** maps that decision back onto the original field names (`is_at_risk`, `risk_reasons`, `suggested_next_step`) so the existing IF and Sheets logic keep working unchanged.",
+        "height": 620,
+        "width": 700,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1840,
+        -400
+      ],
+      "id": "2be42a7a-1576-4381-8b78-85f2a96561cc",
+      "name": "Sticky Note - 2. Combined Reasoning"
+    },
+    {
+      "parameters": {
+        "content": "## 3. Response Composition\n**Slack Composer Agent** only writes text - it never decides anything.\nThe existing **Send Slack Alert** node still sends, and falls back to the original message if the composer fails.",
+        "height": 460,
+        "width": 520,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4220,
+        -200
+      ],
+      "id": "cf35c356-f896-476c-8eed-411ad1a28e54",
+      "name": "Sticky Note - 3. Response Composition"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields - Calculate Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields - Calculate Metrics": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields - Evaluate Risks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields - Evaluate Risks": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields - Summarize Risk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields - Summarize Risk": {
+      "main": [
+        [
+          {
+            "node": "Prepare Agent Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields - Build Task Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields - Build Task Payload": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields - Add Task ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields - Add Task ID": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Find Existing Task",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets - Find Existing Task": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields - Mark Existing Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "If - Task Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If - Task Exists?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields - Mark Existing Task": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Slack Composer Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer le log d'erreur Slack": {
+      "main": [
+        [
+          {
+            "node": "Log Slack Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Slack Alert": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Préparer le log d'erreur Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Agent Input": {
+      "main": [
+        [
+          {
+            "node": "Risk Classifier Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Risk Signal Extractor Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Risk Classifier Agent": {
+      "main": [
+        [
+          {
+            "node": "Format Classifier Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Risk Signal Extractor Agent": {
+      "main": [
+        [
+          {
+            "node": "Format Extractor Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Classifier Output": {
+      "main": [
+        [
+          {
+            "node": "Merge Agent Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Extractor Output": {
+      "main": [
+        [
+          {
+            "node": "Merge Agent Analysis",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Agent Analysis": {
+      "main": [
+        [
+          {
+            "node": "Action Reasoner Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Action Reasoner Agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields - Apply Agent Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields - Apply Agent Decision": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Composer Agent": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classifier Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Risk Classifier Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classifier Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Risk Classifier Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extractor Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Risk Signal Extractor Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extractor Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Risk Signal Extractor Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reasoner Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Action Reasoner Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reasoner Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Action Reasoner Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Composer Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Slack Composer Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Composer Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Slack Composer Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": []
+}

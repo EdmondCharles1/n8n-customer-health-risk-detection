@@ -584,7 +584,7 @@
             {
               "id": "dd22212a-11db-4ebe-b529-fd9b788354dc",
               "name": "error_message",
-              "value": "{{ $json.error?.message || $json.message || $json.description || JSON.stringify($json) }}",
+              "value": "={{ $json.error?.message || $json.message || $json.description || JSON.stringify($json) }}",
               "type": "string"
             }
           ]
@@ -893,6 +893,7 @@
     },
     "Send Slack Alert": {
       "main": [
+        [],
         [
           {
             "node": "Préparer le log d'erreur Slack",
