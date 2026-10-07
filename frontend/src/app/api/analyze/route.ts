@@ -1,90 +1,142 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const customers = [
-  {
-    id: "C005",
-    name: "Ember Agency",
-    riskLevel: "HIGH",
-    riskCategory: "SUPPORT_RISK",
-    riskSignals: [
-      "no login for 75 days",
-      "NPS of 4 is below 7",
-      "support escalation is active",
-      "renewal is in 1 day",
-    ],
-    priority: "HIGH",
-    recommendedAction:
-      "Contact the customer within 24 hours about the escalation.",
-    taskStatus: "DUPLICATE",
-  },
-  {
-    id: "C006",
-    name: "Futura",
-    riskLevel: "LOW",
-    riskCategory: "NO_RISK",
-    riskSignals: [],
-    priority: "LOW",
-    recommendedAction: "No action required.",
-    taskStatus: "NO_ACTION",
-  },
-  {
-    id: "C008",
-    name: "Indigo Media",
-    riskLevel: "MEDIUM",
-    riskCategory: "RENEWAL_RISK",
-    riskSignals: ["renewal is in 36 days"],
-    priority: "MEDIUM",
-    recommendedAction:
-      "Schedule a check-in before the renewal date.",
-    taskStatus: "DUPLICATE",
-  },
-];
+const N8N_REQUEST_TIMEOUT_MS = 120_000;
+
+type ErrorResponse = {
+  success: false;
+  error: string;
+  message: string;
+};
+
+function errorResponse(
+  status: number,
+  error: string,
+  message: string
+) {
+  return NextResponse.json<ErrorResponse>(
+    { success: false, error, message },
+    { status }
+  );
+}
+
+async function analyze(request: NextRequest) {
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    return errorResponse(
+      400,
+      "INVALID_REQUEST_BODY",
+      "The request body must be valid JSON."
+    );
+  }
+
+  const clientId =
+    typeof body === "object" && body !== null && "client_id" in body
+      ? body.client_id
+      : undefined;
+
+  if (typeof clientId !== "string" || clientId.trim() === "") {
+    return errorResponse(
+      400,
+      "MISSING_CLIENT_ID",
+      "Please select a customer."
+    );
+  }
+
+  const webhookUrl = process.env.N8N_WEBHOOK_URL?.trim();
+
+  if (!webhookUrl) {
+    console.error("Analyze API configuration error: N8N_WEBHOOK_URL is missing.");
+
+    return errorResponse(
+      500,
+      "N8N_WEBHOOK_NOT_CONFIGURED",
+      "The analysis service is not configured."
+    );
+  }
+
+  let n8nResponse: Response;
+
+  try {
+    n8nResponse = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ client_id: clientId.trim() }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(N8N_REQUEST_TIMEOUT_MS),
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.name === "TimeoutError" || error.name === "AbortError")
+    ) {
+      console.error(
+        `Analyze API timeout: n8n did not respond within ${N8N_REQUEST_TIMEOUT_MS}ms.`
+      );
+
+      return errorResponse(
+        504,
+        "N8N_REQUEST_TIMEOUT",
+        "The customer analysis took too long. Please try again."
+      );
+    }
+
+    console.error("Analyze API network error while contacting n8n:", error);
+
+    return errorResponse(
+      502,
+      "N8N_UNREACHABLE",
+      "The customer analysis service is currently unavailable."
+    );
+  }
+
+  const responseText = await n8nResponse.text();
+  let data: unknown;
+
+  try {
+    data = JSON.parse(responseText);
+  } catch (error) {
+    console.error(
+      `Analyze API invalid n8n response: status=${n8nResponse.status}, content-type=${n8nResponse.headers.get("content-type") ?? "missing"}, bodyLength=${responseText.length}`,
+      error
+    );
+
+    return errorResponse(
+      502,
+      "N8N_INVALID_RESPONSE",
+      "The customer analysis service returned an invalid response."
+    );
+  }
+
+  if (!n8nResponse.ok) {
+    console.error(
+      `Analyze API n8n HTTP error: status=${n8nResponse.status}`
+    );
+
+    return errorResponse(
+      n8nResponse.status,
+      "N8N_REQUEST_FAILED",
+      "Unable to analyze the customer."
+    );
+  }
+
+  return NextResponse.json(data);
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { client_id } = body;
+    return await analyze(request);
+  } catch (error) {
+    console.error("Unexpected Analyze API error:", error);
 
-    if (!client_id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "MISSING_CLIENT_ID",
-          message: "client_id is required.",
-        },
-        { status: 400 }
-      );
-    }
-
-    const customer = customers.find(
-      (customer) => customer.id === client_id
-    );
-
-    if (!customer) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "CUSTOMER_NOT_FOUND",
-          message: "Customer not found.",
-        },
-        { status: 404 }
-      );
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-
-    return NextResponse.json({
-      success: true,
-      customer,
-    });
-  } catch {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "INTERNAL_ERROR",
-        message: "Unable to analyze the customer.",
-      },
-      { status: 500 }
+    return errorResponse(
+      500,
+      "INTERNAL_ERROR",
+      "Unable to analyze the customer right now."
     );
   }
 }
