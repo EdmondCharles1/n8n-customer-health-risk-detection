@@ -1,11 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { getCustomer } from "@/lib/customers";
+
 const N8N_REQUEST_TIMEOUT_MS = 120_000;
 
 type ErrorResponse = {
   success: false;
   error: string;
   message: string;
+};
+
+type AnalysisResult = {
+  id: string;
+  name: string;
+  riskLevel: string;
+  riskCategory: string;
+  riskSignals: string[];
+  priority: string;
+  recommendedAction: string;
+  taskStatus: string;
+};
+
+type SuccessResponse = {
+  success: true;
+  customer: AnalysisResult;
 };
 
 function errorResponse(
@@ -16,6 +34,34 @@ function errorResponse(
   return NextResponse.json<ErrorResponse>(
     { success: false, error, message },
     { status }
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isSuccessResponse(value: unknown): value is SuccessResponse {
+  if (!isRecord(value) || value.success !== true || !isRecord(value.customer)) {
+    return false;
+  }
+
+  const customer = value.customer;
+
+  return (
+    isNonEmptyString(customer.id) &&
+    isNonEmptyString(customer.name) &&
+    isNonEmptyString(customer.riskLevel) &&
+    isNonEmptyString(customer.riskCategory) &&
+    Array.isArray(customer.riskSignals) &&
+    customer.riskSignals.every(isNonEmptyString) &&
+    isNonEmptyString(customer.priority) &&
+    typeof customer.recommendedAction === "string" &&
+    isNonEmptyString(customer.taskStatus)
   );
 }
 
@@ -45,10 +91,28 @@ async function analyze(request: NextRequest) {
     );
   }
 
-  const webhookUrl = process.env.N8N_WEBHOOK_URL?.trim();
+  const normalizedClientId = clientId.trim();
 
-  if (!webhookUrl) {
-    console.error("Analyze API configuration error: N8N_WEBHOOK_URL is missing.");
+  if (!getCustomer(normalizedClientId)) {
+    return errorResponse(
+      400,
+      "UNKNOWN_CLIENT_ID",
+      "Please select one of the available demo customers."
+    );
+  }
+
+  const webhookUrl = process.env.N8N_WEBHOOK_URL?.trim();
+  const webhookSecret = process.env.N8N_WEBHOOK_SECRET?.trim();
+
+  if (!webhookUrl || !webhookSecret) {
+    const missingVariables = [
+      !webhookUrl ? "N8N_WEBHOOK_URL" : null,
+      !webhookSecret ? "N8N_WEBHOOK_SECRET" : null,
+    ].filter(Boolean);
+
+    console.error(
+      `Analyze API configuration error: ${missingVariables.join(", ")} missing.`
+    );
 
     return errorResponse(
       500,
@@ -64,8 +128,9 @@ async function analyze(request: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-N8N-Webhook-Secret": webhookSecret,
       },
-      body: JSON.stringify({ client_id: clientId.trim() }),
+      body: JSON.stringify({ client_id: normalizedClientId }),
       cache: "no-store",
       signal: AbortSignal.timeout(N8N_REQUEST_TIMEOUT_MS),
     });
@@ -121,6 +186,16 @@ async function analyze(request: NextRequest) {
       n8nResponse.status,
       "N8N_REQUEST_FAILED",
       "Unable to analyze the customer."
+    );
+  }
+
+  if (!isSuccessResponse(data)) {
+    console.error("Analyze API contract error: n8n returned an unexpected payload.");
+
+    return errorResponse(
+      502,
+      "N8N_INVALID_CONTRACT",
+      "The customer analysis service returned an incomplete result."
     );
   }
 
