@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Limit build concurrency for predictable resource use on CI and Windows.
+  experimental: {
+    cpus: 1,
+  },
 };
 
 export default nextConfig;

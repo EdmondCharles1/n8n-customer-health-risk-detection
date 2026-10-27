@@ -1,304 +1,283 @@
-"use client";
+import type { Metadata } from "next";
+import Link from "next/link";
 
-import { useState } from "react";
+import {
+  ArrowRightIcon,
+  BoltIcon,
+  BrainIcon,
+  DatabaseIcon,
+  ShieldIcon,
+  SparkleIcon,
+} from "@/components/icons";
+import { RiskBadge } from "@/components/RiskBadge";
+import { SignalGrid } from "@/components/SignalGrid";
+import {
+  ButtonLink,
+  Container,
+  CtaBand,
+  Eyebrow,
+  IconTile,
+  SectionHeading,
+  focusRing,
+} from "@/components/ui";
 
-const customers = [
+export const metadata: Metadata = {
+  title: { absolute: "Home | Customer Health Risk Analyzer" },
+};
+
+const steps = [
   {
-    id: "C005",
-    name: "Ember Agency",
+    title: "Customer Data",
+    description: "Google Sheets provides operational customer data.",
+    Icon: DatabaseIcon,
   },
   {
-    id: "C006",
-    name: "Futura",
+    title: "Risk Detection",
+    description: "n8n calculates deterministic customer-health signals.",
+    Icon: ShieldIcon,
   },
   {
-    id: "C008",
-    name: "Indigo Media",
+    title: "AI Reasoning",
+    description:
+      "Gemini agents classify risk, extract signals and decide follow-up.",
+    Icon: BrainIcon,
+  },
+  {
+    title: "Action",
+    description:
+      "The application presents the recommended action to the user.",
+    Icon: BoltIcon,
   },
 ];
 
-type AnalysisResult = {
-  id: string;
-  name: string;
-  riskLevel: string;
-  riskCategory: string;
-  riskSignals: string[];
-  priority: string;
-  recommendedAction: string;
-  taskStatus: string;
-};
-
-type ApiResponse = {
-  success: boolean;
-  customer?: AnalysisResult;
-  error?: string;
-  message?: string;
-};
-
-export default function Home() {
-  const [selectedCustomerId, setSelectedCustomerId] = useState("");
-  const [result, setResult] = useState<AnalysisResult | null>(null);
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  async function handleAnalyze() {
-    setError("");
-    setResult(null);
-
-    if (!selectedCustomerId) {
-      setError(
-        "Please select a customer before running the analysis."
-      );
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          client_id: selectedCustomerId,
-        }),
-      });
-
-      const data: ApiResponse = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(
-          data.message || "Unable to analyze this customer."
-        );
-      }
-
-      if (!data.customer) {
-        throw new Error(
-          "The analysis completed but no customer result was returned."
-        );
-      }
-
-      setResult(data.customer);
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Unable to analyze this customer.";
-
-      setError(message);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
+export default function HomePage() {
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10">
-      <div className="mx-auto max-w-2xl">
-        <header className="mb-8">
-          <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-indigo-600">
-            Customer Success Intelligence
-          </p>
+    <>
+      <section
+        aria-labelledby="hero-heading"
+        className="relative border-b border-slate-200 bg-white"
+      >
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-linear-to-b from-indigo-50/80 via-white to-white"
+        />
 
-          <h1 className="text-3xl font-bold text-slate-900">
-            Customer Health Risk Analyzer
-          </h1>
+        <Container className="relative grid items-center gap-12 py-14 sm:py-20 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:py-24">
+          <div>
+            <Eyebrow>
+              <SparkleIcon className="h-3.5 w-3.5" />
+              AI-Powered Customer Success
+            </Eyebrow>
 
-          <p className="mt-3 text-slate-600">
-            Select a customer and run the AI-powered customer
-            health analysis.
-          </p>
-        </header>
+            <h1
+              id="hero-heading"
+              className="mt-5 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl lg:text-[3.25rem] lg:leading-[1.1]"
+            >
+              Detect customer risk{" "}
+              <span className="text-indigo-600">before churn.</span>
+            </h1>
 
-        <section className="rounded-2xl bg-white p-6 shadow-sm">
-          <label
-            htmlFor="customer"
-            className="mb-2 block text-sm font-medium text-slate-700"
-          >
-            Customer
-          </label>
+            <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-600">
+              Customer Health Risk Analyzer combines operational customer
+              data, deterministic business rules, and AI agents to identify
+              risk and recommend the next best action.
+            </p>
 
-          <select
-            id="customer"
-            value={selectedCustomerId}
-            disabled={isLoading}
-            onChange={(event) => {
-              setSelectedCustomerId(event.target.value);
-              setResult(null);
-              setError("");
-            }}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-slate-900 outline-none transition focus:border-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-100"
-          >
-            <option value="">Select a customer</option>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <ButtonLink href="/analyze" withArrow>
+                Analyze a Customer
+              </ButtonLink>
 
-            {customers.map((customer) => (
-              <option
-                key={customer.id}
-                value={customer.id}
+              <ButtonLink href="/project" variant="secondary">
+                View Project
+              </ButtonLink>
+            </div>
+
+            <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 text-sm text-slate-500">
+              <p className="inline-flex items-center gap-2">
+                <span
+                  aria-hidden="true"
+                  className="flex h-6 w-6 items-center justify-center rounded-md bg-slate-900 text-white"
+                >
+                  <BoltIcon className="h-3.5 w-3.5" />
+                </span>
+                <span>
+                  Powered by{" "}
+                  <span className="font-semibold text-slate-700">
+                    n8n + Gemini
+                  </span>
+                </span>
+              </p>
+
+              <span
+                aria-hidden="true"
+                className="hidden h-4 w-px bg-slate-300 sm:block"
+              />
+
+              <p>
+                First time here?{" "}
+                <Link
+                  href="/demo"
+                  className={`group inline-flex items-center gap-1 rounded font-semibold text-indigo-700 hover:text-indigo-900 ${focusRing}`}
+                >
+                  Guided Demo
+                  <ArrowRightIcon className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              </p>
+            </div>
+          </div>
+
+          <ProductPreview />
+        </Container>
+      </section>
+
+      <section
+        aria-labelledby="how-heading"
+        className="py-14 sm:py-20"
+      >
+        <Container>
+          <SectionHeading
+            id="how-heading"
+            eyebrow="How it works"
+            title="From raw account data to a clear next step"
+            description="Deterministic rules and AI agents each do what they are best at, in a single automated workflow."
+          />
+
+          <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {steps.map(({ title, description, Icon }, index) => (
+              <li
+                key={title}
+                className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
               >
-                {customer.id} — {customer.name}
-              </option>
+                <div className="flex items-center justify-between">
+                  <IconTile>
+                    <Icon className="h-5 w-5" />
+                  </IconTile>
+
+                  <span className="font-mono text-sm font-medium text-slate-400">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                </div>
+
+                <h3 className="mt-5 font-semibold text-slate-900">
+                  {title}
+                </h3>
+
+                <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
+                  {description}
+                </p>
+              </li>
             ))}
-          </select>
+          </ol>
+        </Container>
+      </section>
 
-          <button
-            type="button"
-            onClick={handleAnalyze}
-            disabled={isLoading}
-            className="mt-4 w-full rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isLoading
-              ? "Analyzing customer..."
-              : "Analyze Customer"}
-          </button>
+      <section
+        aria-labelledby="evaluates-heading"
+        className="border-y border-slate-200 bg-white py-14 sm:py-20"
+      >
+        <Container>
+          <SectionHeading
+            id="evaluates-heading"
+            eyebrow="Signals"
+            title="What the system evaluates"
+            description="Four operational indicators drive every customer-health assessment."
+          />
 
-          {isLoading && (
-            <div className="mt-4 rounded-lg border border-indigo-100 bg-indigo-50 p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+          <div className="mt-10">
+            <SignalGrid />
+          </div>
+        </Container>
+      </section>
 
+      <CtaBand
+        title="Ready to analyze customer health?"
+        description="Pick a customer and get a risk assessment with a recommended next action."
+        href="/analyze"
+        label="Analyze Customer"
+      />
+    </>
+  );
+}
+
+function ProductPreview() {
+  return (
+    <figure className="relative w-full max-w-lg lg:max-w-none">
+      <div
+        aria-hidden="true"
+        className="absolute -inset-3 rounded-[28px] bg-linear-to-br from-indigo-100 to-violet-100 opacity-70"
+      />
+
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg shadow-indigo-900/5">
+        <div aria-hidden="true" className="h-1 w-full bg-amber-500" />
+
+        <div className="p-5 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">
+              Example analysis
+            </p>
+
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+              Illustrative preview
+            </span>
+          </div>
+
+          <div>
+            <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="sr-only">Customer</p>
+                <div className="text-xl font-semibold text-slate-900">
+                  Futura
+                  <span className="ml-2 font-mono text-xs font-medium text-slate-500">
+                    · C006
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <p className="sr-only">Risk Level</p>
                 <div>
-                  <p className="text-sm font-medium text-indigo-900">
-                    Analyzing customer...
-                  </p>
-
-                  <p className="text-sm text-indigo-700">
-                    Running the customer health risk analysis.
-                  </p>
+                  <RiskBadge label="Risk" value="MEDIUM" />
                 </div>
               </div>
             </div>
-          )}
 
-          {error && (
-            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
-              <p className="text-sm font-semibold text-red-800">
-                Analysis failed
-              </p>
-
-              <p className="mt-1 text-sm text-red-700">
-                {error}
-              </p>
-            </div>
-          )}
-        </section>
-
-        {result && !isLoading && (
-          <section className="mt-6 rounded-2xl bg-white p-6 shadow-sm">
-            <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-slate-500">
-                  {result.id}
+            <div className="mt-5 grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
+                <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                  Category
                 </p>
-
-                <h2 className="text-2xl font-semibold text-slate-900">
-                  {result.name}
-                </h2>
+                <div className="mt-1 break-words font-mono text-sm font-semibold text-slate-900">
+                  ENGAGEMENT_RISK
+                </div>
               </div>
 
-              <RiskBadge riskLevel={result.riskLevel} />
-            </div>
-
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <ResultCard
-                label="Risk Category"
-                value={result.riskCategory}
-              />
-
-              <ResultCard
-                label="Priority"
-                value={result.priority}
-              />
-
-              <ResultCard
-                label="Task Status"
-                value={result.taskStatus}
-              />
-            </div>
-
-            <div className="mt-6">
-              <h3 className="font-semibold text-slate-900">
-                Risk Signals
-              </h3>
-
-              {result.riskSignals.length > 0 ? (
-                <ul className="mt-3 space-y-2">
-                  {result.riskSignals.map((signal) => (
-                    <li
-                      key={signal}
-                      className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-700"
-                    >
-                      {signal}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 text-sm text-slate-500">
-                  No risk signals detected.
+              <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
+                <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                  Priority
                 </p>
-              )}
+                <div className="mt-1">
+                  <RiskBadge value="MEDIUM" />
+                </div>
+              </div>
             </div>
 
-            <div className="mt-6 rounded-xl bg-indigo-50 p-4">
-              <p className="text-sm font-medium text-indigo-700">
+            <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-indigo-700">
+                <SparkleIcon className="h-4 w-4" />
                 Recommended Action
               </p>
-
-              <p className="mt-1 text-slate-800">
-                {result.recommendedAction}
-              </p>
+              <div className="mt-1.5 text-sm leading-relaxed text-slate-800">
+                Contact the customer about the drop in usage.
+              </div>
             </div>
-          </section>
-        )}
+          </div>
+        </div>
       </div>
-    </main>
-  );
-}
 
-function ResultCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-xl border border-slate-200 p-4">
-      <p className="text-sm text-slate-500">
-        {label}
-      </p>
-
-      <p className="mt-1 font-semibold text-slate-900">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function RiskBadge({
-  riskLevel,
-}: {
-  riskLevel: string;
-}) {
-  let classes = "bg-slate-100 text-slate-700";
-
-  if (riskLevel === "HIGH") {
-    classes = "bg-red-100 text-red-700";
-  }
-
-  if (riskLevel === "MEDIUM") {
-    classes = "bg-amber-100 text-amber-700";
-  }
-
-  if (riskLevel === "LOW") {
-    classes = "bg-emerald-100 text-emerald-700";
-  }
-
-  return (
-    <div
-      className={`w-fit rounded-full px-4 py-2 text-sm font-semibold ${classes}`}
-    >
-      {riskLevel}
-    </div>
+      <figcaption className="sr-only">
+        Illustrative example of an analysis result. Not live data.
+      </figcaption>
+    </figure>
   );
 }
