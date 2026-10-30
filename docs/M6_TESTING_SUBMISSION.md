@@ -47,9 +47,9 @@ All results below come from real runs on 2026-10-30. Full details are in
 | Coverage (measured scope) | Statements **95.38%**, Branches **90.47%**, Functions **90.90%**, Lines **95.31%** |
 | Coverage scope | `src/app/api/**`, `src/lib/**` and `src/components/RiskBadge.tsx`; UI pages and other components are not measured |
 | Regression check | 4 bugs injected into `route.ts` one at a time; each one made at least one test fail |
-| CI | `.github/workflows/tests.yml`: `npm ci`, lint, and tests with coverage on pushes to `main` and on PRs, with no secrets. It is configured but **not yet verified with a run on GitHub**. |
+| CI | `.github/workflows/tests.yml`: `npm ci`, lint, and tests with coverage on pushes to `main` and on PRs, with no secrets. **Passed** on [PR #2](https://github.com/EdmondCharles1/n8n-customer-health-risk-detection/pull/2) (56 tests passed, same coverage figures), which was then merged into `main`. The push run on `main` after the merge also passed. CI runs only the mocked suite. |
 | Lint / type check / build | All passed (`npm run lint`, `tsc --noEmit`, `npm run build` with Webpack) |
-| Live n8n integration | **3 passed, 0 failed (17.31 s)**, with no mocks. The real Webhook rejected an unauthenticated request; C005 was analyzed end-to-end through the n8n Webhook (Google Sheets + Gemini); and C005 was analyzed through the Next.js `/api/analyze` route. |
+| Live n8n integration | **3 passed, 0 failed (17.31 s)**, run manually on the local machine (not in CI), with no mocks. The real Webhook rejected an unauthenticated request; C005 was analyzed end-to-end through the n8n Webhook (Google Sheets + Gemini); and C005 was analyzed through the Next.js `/api/analyze` route. |
 
 The live tests check HTTP 200, `success: true`, `customer.id === "C005"`,
 non-empty `riskLevel`, `riskCategory`, `priority` and `taskStatus`, a
@@ -70,7 +70,8 @@ leaks into responses or logs.
   is run manually and not in CI. Its pass reflects one point in time.
 - The public deployment still relies on n8n running on a local machine, reached
   from the VPS through a reverse SSH tunnel.
-- The GitHub Actions workflow has not yet been verified on GitHub.
+- CI checks only the mocked suite. A change that breaks the real n8n or Gemini
+  contract is caught only when the live test is run manually.
 - The n8n workflow's internal risk rules and prompts are only checked through
   their HTTP output.
 

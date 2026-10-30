@@ -4,8 +4,8 @@ Generated on 2026-10-30 from a local run in `frontend/` (Windows 11, Node.js
 24.22.1, Vitest 4.1.12, V8 coverage provider). All figures below are copied
 from real command output; none are estimated.
 
-GitHub Actions CI (`.github/workflows/tests.yml`) is configured but has not
-yet been verified with a run on GitHub.
+GitHub Actions CI (`.github/workflows/tests.yml`) passed on pull request #2,
+which was then merged into `main`. See section 5.
 
 ## 1. Unit and API tests (mocked): `npm run test:coverage`
 
@@ -106,3 +106,21 @@ report.
 | Lint | `npm run lint` | Passed (0 errors, 0 warnings) |
 | Type check | `npx tsc --noEmit` | Passed |
 | Production build | `npm run build` (`next build --webpack`) | Passed; all 13 pages and `/api/analyze` compiled |
+
+## 5. GitHub Actions CI
+
+The `Tests` workflow (job "Lint, unit tests and coverage") runs `npm ci`,
+`npm run lint` and `npm run test:coverage` on Ubuntu with Node.js 24, without
+secrets.
+
+| Run | Trigger | Result |
+| --- | --- | --- |
+| [41013115220](https://github.com/EdmondCharles1/n8n-customer-health-risk-detection/actions/runs/41013115220) | Pull request [#2](https://github.com/EdmondCharles1/n8n-customer-health-risk-detection/pull/2) (`feat/m6-testing`) | **Success**: 4 test files, 56 tests passed; coverage of 95.38% statements, 90.47% branches, 90.9% functions and 95.31% lines |
+| [41013194491](https://github.com/EdmondCharles1/n8n-customer-health-risk-detection/actions/runs/41013194491) | Push to `main` after the merge | **Success** |
+
+PR #2 was merged into `main` on 2026-10-30 at 06:17 UTC.
+
+**What CI does and does not run:** CI runs only the mocked unit/API suite. The
+3 live integration tests (real n8n, Google Sheets and Gemini) are **not** run
+in CI, because they need the webhook secret and the local n8n instance. Their
+PASSED result comes from a manual local run (section 3).

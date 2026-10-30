@@ -470,17 +470,18 @@ manual check, not a CI gate.
 `npm run lint`, then `npm run test:coverage` in `frontend/`. The HTML coverage
 report is uploaded as the `coverage-report` artifact. The workflow needs no
 secrets and never runs the live integration test. The production build is still
-run by Vercel on deploy. The workflow has not yet been verified with a run on
-GitHub.
+run by Vercel on deploy.
+
+CI passed on [pull request #2](https://github.com/EdmondCharles1/n8n-customer-health-risk-detection/pull/2)
+(56 tests passed), and the PR was merged into `main` on 2026-10-30. The push
+run on `main` after the merge also passed.
 
 ### Test results
 
-Verified locally on 2026-10-30:
-
-| Suite | Result |
-| --- | --- |
-| Unit/API tests (mocked) | 56 passed, 0 failed, 0 skipped |
-| Live integration tests (real n8n, Google Sheets and Gemini) | 3 passed, 0 failed (17.31 s) |
+| Suite | Where it ran | Result |
+| --- | --- | --- |
+| Unit/API tests (mocked) | Locally and in GitHub Actions CI | 56 passed, 0 failed, 0 skipped |
+| Live integration tests (real n8n, Google Sheets and Gemini) | **Locally only**, run manually; not in CI | 3 passed, 0 failed (17.31 s) |
 
 The 3 live tests are: the Webhook rejects an unauthenticated request; C005 is
 analyzed through the n8n Webhook; and C005 is analyzed through the Next.js
@@ -509,7 +510,8 @@ live test result are in the
 - The public deployment depends on n8n running on a local machine reached
   through a reverse SSH tunnel from the VPS. If either is down, the live app
   and the live tests fail.
-- GitHub Actions CI is configured but has not yet been verified on GitHub.
+- CI checks only the mocked suite. A pull request that breaks the real n8n or
+  Gemini contract would still pass CI until the live test is run manually.
 - React components and pages have no automated rendering or browser tests.
 - The live test depends on local n8n, valid Google OAuth credentials and
   Gemini availability, and it is not run in CI.
