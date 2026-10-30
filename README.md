@@ -328,8 +328,12 @@ responses, and validates the complete n8n response before returning it.
 ```powershell
 Set-Location frontend
 npm run lint
+npm test
 npm run build
 ```
+
+Automated tests are described in
+[Testing & Production Hardening (M6)](#testing--production-hardening-m6).
 
 Manual checks:
 
@@ -366,6 +370,156 @@ Manual checks:
 - Deploy the current frontend revision.
 - Record one controlled successful run as the Demo Day fallback.
 - Add automated browser tests after the public integration is stable.
+
+## Testing & Production Hardening (M6)
+
+### Objectives
+
+During M5, the application failed in production in several ways: expired
+Google OAuth credentials, HTTP 500/502/504 responses, a dropped SSH tunnel and
+a broken frontend build. Each one was found by hand. The M6 test suite makes
+the critical path (customer selection → `/api/analyze` → n8n → validated
+result) verifiable in seconds and checks it automatically on every pull
+request.
+
+### Framework
+
+- [Vitest](https://vitest.dev/) 4 in a Node environment, with V8 coverage
+  (`@vitest/coverage-v8`).
+- No browser, Docker or mock server is used. The n8n Webhook is replaced by a
+  stubbed `fetch` in unit/API tests.
+
+### Two kinds of tests
+
+| | Unit/API tests | Live integration test |
+| --- | --- | --- |
+| Files | `src/**/*.test.ts` | `src/**/*.integration.test.ts` |
+| Command | `npm test` / `npm run test:coverage` | `npm run test:integration` |
+| n8n / Google Sheets / Gemini | **Mocked**; nothing external is called | **Real**; nothing is mocked |
+| Secrets required | None | `N8N_WEBHOOK_URL`, `N8N_WEBHOOK_SECRET` |
+| Runs in CI | Yes | **No**, it is run manually only |
+
+The mocked tests prove how the API route behaves. They do not prove that the
+live workflow works; only the integration test does.
+
+### Critical paths covered
+
+- **API request validation**: invalid JSON, missing, empty or non-string
+  `client_id`, and unknown customer IDs (n8n is never called).
+- **Configuration**: missing or blank `N8N_WEBHOOK_URL` / `N8N_WEBHOOK_SECRET`
+  returns `500 N8N_WEBHOOK_NOT_CONFIGURED`.
+- **n8n call**: correct URL, `X-N8N-Webhook-Secret` header, trimmed ID,
+  `no-store` and a timeout signal.
+- **Response contract**: a valid analysis passes through unchanged, and
+  incomplete or malformed payloads return `502 N8N_INVALID_CONTRACT`.
+- **Upstream failures**: non-JSON or HTML error pages (`502
+  N8N_INVALID_RESPONSE`), n8n HTTP 403/404/500 (`N8N_REQUEST_FAILED`),
+  timeouts (`504`), network failures such as a dropped tunnel (`502
+  N8N_UNREACHABLE`) and unexpected errors (`500 INTERNAL_ERROR`).
+- **Security**: the webhook secret never appears in responses or logs.
+- **Data transformations**: demo customer lookup (`getCustomer`), mapping of
+  AI risk and priority values to display tones (`getTone`), and navigation
+  matching.
+- **Live** (manual): the n8n Webhook rejects unauthenticated calls, and C005 is
+  analyzed end-to-end through the Webhook and through `/api/analyze`. The
+  assertions check structure and business rules, not Gemini's exact wording.
+
+### Run the tests locally
+
+```powershell
+Set-Location frontend
+npm ci
+npm test                  # mocked unit/API tests
+npm run test:coverage     # same tests + V8 coverage (frontend/coverage/index.html)
+npm run test:watch        # watch mode during development
+```
+
+### Run the live n8n integration test
+
+Prerequisites: the local n8n stack is running (`.\scripts\start-n8n.ps1` from
+the repository root), the
+`Customer Health - Web App MVP` workflow is active, and its Google Sheets and
+Gemini credentials are valid.
+
+Set these variables in `frontend/.env.local` (gitignored) or in the shell:
+
+- `N8N_WEBHOOK_URL`: prefer the local URL,
+  `http://localhost:5678/webhook/customer-risk-analysis`
+- `N8N_WEBHOOK_SECRET`: the value of the n8n Header Auth credential
+
+```powershell
+Set-Location frontend
+npm run test:integration
+```
+
+The test sends real requests for customer `C005`, which use Gemini quota. The
+verified run took 17.31 s, but Gemini latency varies, so each test allows up to
+180 s. The Web App Webhook path only reads Google Sheets and
+returns the analysis: it creates no task and sends no Slack message. If a
+variable is missing, the test fails with an explicit "not configured" error
+instead of being skipped.
+
+The public deployment (Vercel → VPS Nginx → reverse SSH tunnel → local n8n)
+depends on that local machine and tunnel being up, so the live test is a
+manual check, not a CI gate.
+
+### Continuous integration
+
+[`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs on pushes to
+`main` and on pull requests. It uses Node.js 24 and runs `npm ci`, then
+`npm run lint`, then `npm run test:coverage` in `frontend/`. The HTML coverage
+report is uploaded as the `coverage-report` artifact. The workflow needs no
+secrets and never runs the live integration test. The production build is still
+run by Vercel on deploy. The workflow has not yet been verified with a run on
+GitHub.
+
+### Test results
+
+Verified locally on 2026-10-30:
+
+| Suite | Result |
+| --- | --- |
+| Unit/API tests (mocked) | 56 passed, 0 failed, 0 skipped |
+| Live integration tests (real n8n, Google Sheets and Gemini) | 3 passed, 0 failed (17.31 s) |
+
+The 3 live tests are: the Webhook rejects an unauthenticated request; C005 is
+analyzed through the n8n Webhook; and C005 is analyzed through the Next.js
+`/api/analyze` route.
+
+### Coverage results
+
+Measured from the mocked unit/API suite (`npm run test:coverage`); the live
+tests are not included in the coverage figures:
+
+| Statements | Branches | Functions | Lines |
+| --- | --- | --- | --- |
+| 95.38% | 90.47% | 90.90% | 95.31% |
+
+**Scope:** `src/app/api/**`, `src/lib/**` and `src/components/RiskBadge.tsx`
+only. React pages and the other UI components are not measured, so this is
+not whole-application coverage. Per-file figures, the mutation check and the
+live test result are in the
+[M6 test report](docs/test-results/M6_TEST_REPORT.md).
+
+### Known limitations
+
+- The live tests are run manually and their result reflects one point in time.
+  A later failure of OAuth, Gemini or the tunnel would only be detected by
+  running them again.
+- The public deployment depends on n8n running on a local machine reached
+  through a reverse SSH tunnel from the VPS. If either is down, the live app
+  and the live tests fail.
+- GitHub Actions CI is configured but has not yet been verified on GitHub.
+- React components and pages have no automated rendering or browser tests.
+- The live test depends on local n8n, valid Google OAuth credentials and
+  Gemini availability, and it is not run in CI.
+- The tests do not cover the n8n workflow's internal logic (risk rules and
+  agent prompts); they validate its HTTP contract.
+- The mocked contract is hand-written from a verified response. If the
+  workflow's output changes, only the live test will detect it.
+
+See [M6 testing submission](docs/M6_TESTING_SUBMISSION.md) for the path
+justification and reflection.
 
 ## M5 handoff and Demo Day artifacts
 
